@@ -35,7 +35,7 @@ public class WorkingSetInfo {
 		String t = day + ". " + month + " " + year;
 		String h = year + "---" + month_index + "_" + month + "---" + day + "___"
 				+ (System.currentTimeMillis() % 1000000);
-		return new WorkingSetInfo(t, FileManager.rescale(thump, 120), System.currentTimeMillis(), h);
+		return new WorkingSetInfo(t, FileManager.rescale(thump, 120, true), System.currentTimeMillis(), h);
 	}
 
 	public String getTitle() {

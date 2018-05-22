@@ -21,13 +21,13 @@ import javafx.scene.image.WritableImage;
 public class FileManager {
 
 	private static final Random RANDOM = new Random(System.currentTimeMillis());
-	private static final String REL_PATH_WORKINGSETS = "\\zuruekgelegt";
-	private static final String REL_PATH_TRASH = "\\muell";
-	private static final String REL_PATH_COPY = "\\kopien";
-	private static final String REL_PATH_ORIGINAL_NEW = "\\ungesehen";
-	private static final String REL_PATH_ORIGINAL_SEEN = "\\behaltene-originale";
-	private static final String NAME_THUMBNAIL = "thumbnail.png";
-	private static final String NAME_INFO_FILE = "title.info";
+	public static final String REL_PATH_WORKINGSETS = "\\zuruekgelegt";
+	public static final String REL_PATH_TRASH = "\\muell";
+	public static final String REL_PATH_COPY = "\\kopien";
+	public static final String REL_PATH_ORIGINAL_NEW = "\\ungesehen";
+	public static final String REL_PATH_ORIGINAL_SEEN = "\\behaltene-originale";
+	public static final String NAME_THUMBNAIL = "thumbnail.png";
+	public static final String NAME_INFO_FILE = "title.info";
 	private static final String FLAG_SPLIT = "%";
 
 	public static void saveWorkingSet(WorkingSet ws) {
@@ -43,7 +43,7 @@ public class FileManager {
 				ws.getBase());
 		saveAll(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_COPY, ws.getCopy());
 		saveAll(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_TRASH, ws.getTrash());
-		
+
 		// Thumbnail
 		try {
 			ImageIO.write(SwingFXUtils.fromFXImage(ws.getInfo().getThumbnail(), null), "png", new File(
@@ -52,7 +52,7 @@ public class FileManager {
 			System.err.println("Speichern des Thumbnails gescheitert");
 			e.printStackTrace();
 		}
-		
+
 		// Info
 		File titleInfo = new File(
 				Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + "\\" + NAME_INFO_FILE);
@@ -63,7 +63,9 @@ public class FileManager {
 		}
 		PrintWriter writer = null;
 		try {
-			writer = new PrintWriter(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + "\\" + NAME_INFO_FILE, "UTF-8");
+			writer = new PrintWriter(
+					Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + "\\" + NAME_INFO_FILE,
+					"UTF-8");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (UnsupportedEncodingException e) {
@@ -95,7 +97,7 @@ public class FileManager {
 		WorkingSetInfo[] res = new WorkingSetInfo[amount];
 		int i = 0;
 		for (File f : dir.listFiles()) {
-			
+
 			if (!f.exists() || !f.isDirectory())
 				continue;
 			res[i] = parseWorkingSet(f, f.getName());
@@ -178,6 +180,18 @@ public class FileManager {
 		}
 	}
 
+	public static void save(String dir, Image i, String name) {
+
+		File f = new File(dir + "\\" + name);
+
+		try {
+			ImageIO.write(SwingFXUtils.fromFXImage(i, null), "png", f);
+		} catch (IOException e) {
+			System.err.println("Speichern gescheitert: " + dir + name);
+			e.printStackTrace();
+		}
+	}
+
 	public static void delDir(File dir) {
 
 		if (dir.listFiles() != null)
@@ -188,6 +202,16 @@ public class FileManager {
 					f.delete();
 
 		dir.delete();
+	}
+
+	public static void delContent(File dir) {
+
+		if (dir.listFiles() != null)
+			for (File f : dir.listFiles())
+				if (f.isDirectory())
+					delDir(f);
+				else
+					f.delete();
 	}
 
 	public static Image rescale(Image base, int width, int height) {
@@ -212,11 +236,19 @@ public class FileManager {
 
 	}
 
-	public static Image rescale(Image base, int width) {
+	public static Image rescale(Image base, int size, boolean onWidth) {
 
-		double s = width / base.getWidth();
+		double s = 0;
+		if (onWidth)
+			s = size / base.getWidth();
+		else
+			s = size / base.getHeight();
 
-		WritableImage res = new WritableImage(width, (int) (base.getHeight() * s));
+		WritableImage res = null;
+		if (onWidth)
+			res = new WritableImage(size, (int) (base.getHeight() * s));
+		else
+			res = new WritableImage((int) (base.getWidth() * s), size);
 
 		PixelReader reader = base.getPixelReader();
 		PixelWriter writer = res.getPixelWriter();
