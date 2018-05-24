@@ -1,23 +1,20 @@
 package application;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Random;
 
-import javax.imageio.ImageIO;
-
-import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
 public class BufferedWorkingSet {
 
 	private static final Random RANDOM = new Random(System.currentTimeMillis() + 4);
-	private static final File FOLDER_TEMP = new File(Main.PATH + "\\temp");
+	public static final File FOLDER_TEMP = new File(Main.PATH + "\\temp");
 
-	private static final int BUFFER_SIZE_DEFAULT = 3;
+	private static final int BUFFER_SIZE_DEFAULT = 5;
+	private static final int MAX_IMAGES_IN_RAM = 15;
 	private static final int PREVIEW_SIZE = 120;
 	private static final boolean PREVIEW_SCALE_ON_WIDTH = false;
 
@@ -25,17 +22,19 @@ public class BufferedWorkingSet {
 	private ArrayList<String> index_trash = new ArrayList<String>();
 	private ArrayList<String> index_copy = new ArrayList<String>();
 	private ArrayList<String> index_base_keep = new ArrayList<String>();
-	private ArrayList<String> index_cutted = new ArrayList<String>();
 
 	private ArrayList<SignedImage> previews = new ArrayList<SignedImage>();
 	private HashMap<String, SignedImage> buffer_base = new HashMap<String, SignedImage>();
 	private ArrayList<String> runningLoadTasks = new ArrayList<String>();
 
 	private boolean first = false;
-	private int startSize = 0;
 	private WorkingSetInfo info = null;
 	private File sourceDir;
 	private int prefBufferSize = BUFFER_SIZE_DEFAULT;
+	private int runningLoadTasksAmount = 0;
+	private int currentBufferSize = 0;
+	private int runningCopyTasks = 0;
+	private int imagesInRAM = 0;
 
 	public BufferedWorkingSet(boolean first, File source) {
 		super();
@@ -43,29 +42,43 @@ public class BufferedWorkingSet {
 		sourceDir = source;
 	}
 
-	public static BufferedWorkingSet genNew(Collection<File> files) {
+	public static BufferedWorkingSet genNew(Collection<File> files) throws InterruptedException {
 
 		BufferedWorkingSet ws = new BufferedWorkingSet(true, FOLDER_TEMP);
 
 		// temp clearen (falls noch nich clear)
 		clearTemp();
 
+		Sandglass sg = new Sandglass(files.size());
+		ArrayList<String> orderedNameList = new ArrayList<String>();
 		// Alle in temp laden:
 		for (File f : files) {
 			try {
-
-				Image img = SwingFXUtils.toFXImage(ImageIO.read(f), null);
 				String name = genName();
-				FileManager.save(FOLDER_TEMP.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_NEW, img, name); // Speichern
-				ws.getIndex_base().add(name); // Eintragen
-				ws.getPreviews().add(new SignedImage(name, genPreview(img))); // Vorschau laden
+				orderedNameList.add(name);
 
-			} catch (IOException e) {
+				while (ws.getImagesInRAM() >= MAX_IMAGES_IN_RAM)
+					Thread.sleep(20);
+				ws.setImageInRAM(ws.getImagesInRAM() + 1);
+				scheduleNewInitLoadingTask(f, ws, sg, name);
+			} catch (Exception e) {
 				System.err.println("Übertragen in temp gescheitert für " + f.getName() + ":/");
 				e.printStackTrace();
 			}
 		}
+
+		while (!sg.isEmpty())
+			Thread.sleep(50);
+
+		System.gc();
+
+		// In die richtige Reihenfolge bringen
+		for (String s : orderedNameList)
+			ws.getIndex_base().add(0, s);
+
+		ws.setInfo(WorkingSetInfo.gen(ws.getPreviews().get(0).getImage(), files.size()));
 		ws.kickOffUpdateLoop();
+		files = null;
 		return ws;
 	}
 
@@ -92,7 +105,6 @@ public class BufferedWorkingSet {
 				ws.getIndex_trash().add(trashFile.getName());
 
 			}
-		boolean first = true;
 		if (new File(dir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_SEEN).listFiles() != null) // Bilder
 																										// vorhanden?
 			for (File oldFile : new File(dir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_SEEN).listFiles()) {
@@ -101,15 +113,7 @@ public class BufferedWorkingSet {
 					System.err.println("Error loading seen images. Found dir or non existing file");
 					continue; //
 				}
-
-				if (first) {
-					first = false;
-					Image preview = genPreview(oldFile);
-					ws.getPreviews().add(new SignedImage(oldFile.getName(), preview));
-					ws.stamp(preview);
-				} else
-					ws.getPreviews().add(new SignedImage(oldFile.getName(), genPreview(oldFile)));
-
+				ws.getPreviews().add(new SignedImage(oldFile.getName(), genPreview(oldFile)));
 				ws.getIndex_base_keep().add(oldFile.getName());
 
 			}
@@ -136,17 +140,58 @@ public class BufferedWorkingSet {
 				ws.getIndex_copy().add(copyFile.getName());
 
 			}
+
+		ws.setInfo(FileManager.parseWorkingSetInfo(dir));
 		ws.kickOffUpdateLoop();
 		return ws;
 	}
 
-	public void addCut(SignedImage cutted) {
-		index_cutted.add(cutted.getName());
-		FileManager.save(sourceDir.getAbsolutePath() + FileManager.REL_PATH_COPY, cutted.getImage(), cutted.getName());
+	private static void scheduleNewInitLoadingTask(File f, BufferedWorkingSet ws, Sandglass sg, String name) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					Image img = FileManager.load(f);
+					System.out.println("[info] loaded into RAM:\t " + name);
+					Main.loadProgress += Main.progressPerImage * 0.2;
+					FileManager.saveAndUpdateProgress(FOLDER_TEMP.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_NEW,
+							img, name); // Speichern
+					System.out.println("[info] saved in temp:\t " + name);
+					ws.getPreviews().add(new SignedImage(name, genPreview(img))); // Vorschau laden
+					System.out.println("[info] preview gen.:\t " + name);
+					sg.substract();
+					img = null;
+					System.gc();
+					ws.setImageInRAM(ws.getImagesInRAM() - 1);
+					Main.loadProgress += Main.progressPerImage * 0.2;
+
+				} catch (Exception e) {
+					System.err.println("Error loading file " + f.getName());
+					e.printStackTrace();
+				}
+
+			}
+		}, "Initial-Loading-images").start();
 	}
 
-	public void addCopy(SignedImage copy) {
-		index_copy.add(copy.getName());
+	public void addCopy(Image toCopy, Runnable finishTask) {
+		runningCopyTasks++;
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				String name = genName();
+				FileManager.save(sourceDir.getAbsolutePath() + FileManager.REL_PATH_COPY, toCopy, name);
+				// neues Preview anfertigen
+				previews.add(new SignedImage(name, genPreview(toCopy)));
+				index_copy.add(name);
+				runningCopyTasks--;
+				if (finishTask != null)
+					finishTask.run();
+			}
+
+		}, "copy").start();
 	}
 
 	public void addSeen(SignedImage seen) {
@@ -184,29 +229,20 @@ public class BufferedWorkingSet {
 	}
 
 	public void removeCopy(SignedImage copy) {
+
 		String s = null;
 		for (String s0 : index_copy)
 			if (s0.equals(copy.getName())) {
 				s = s0;
 				break;
 			}
-		if (s != null)
-			index_copy.remove(s);
-		else { // Bild wurde gecuttet... :(
+		index_copy.remove(s);
+		File copyImage = new File(sourceDir.getAbsolutePath() + FileManager.REL_PATH_COPY + "\\" + copy.getName());
+		if (copyImage.exists())
+			copyImage.delete();
+		else
+			System.err.println("[WARN] failed to delete croped copy: File not existing");
 
-			for (String s0 : index_cutted)
-				if (s0.equals(copy.getName())) {
-					s = s0;
-					break;
-				}
-			index_cutted.remove(s);
-			File cuttedImage = new File(
-					sourceDir.getAbsolutePath() + FileManager.REL_PATH_COPY + "\\" + copy.getName());
-			if (cuttedImage.exists())
-				cuttedImage.delete();
-			else
-				System.err.println("[WARN] failed to delete croped copy: File not existing");
-		}
 	}
 
 	public void removeTrash(SignedImage seen) {
@@ -222,15 +258,15 @@ public class BufferedWorkingSet {
 	public SignedImage get(String name) {
 
 		if (sourceDir == FOLDER_TEMP) {
-			// Ist garantiert in "Unseen" oder ist gecutted in "copy"
-			// gecutted?
-			boolean croped = false;
-			for (String s : index_cutted)
+			// Ist garantiert in "Unseen" oder ist geklont in "copy"
+			// geklont?
+			boolean copyed = false;
+			for (String s : index_copy)
 				if (s.equals(name)) {
-					croped = true;
+					copyed = true;
 					break;
 				}
-			if (croped)
+			if (copyed)
 				return new SignedImage(name,
 						FileManager.load(FOLDER_TEMP.getAbsolutePath() + FileManager.REL_PATH_COPY + "\\" + name));
 			else
@@ -295,6 +331,7 @@ public class BufferedWorkingSet {
 			index_base.remove(name); // aus index unseen entfernen
 			SignedImage res = buffer_base.get(name); // aus buffer nehmen
 			buffer_base.remove(name);
+			currentBufferSize--;
 			return res;
 
 		} else {
@@ -307,10 +344,11 @@ public class BufferedWorkingSet {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
 				}
-			
+
 			index_base.remove(name); // aus index unseen entfernen
 			SignedImage res = buffer_base.get(name); // aus buffer nehmen
 			buffer_base.remove(name);
+			currentBufferSize--;
 			return res;
 		}
 
@@ -323,24 +361,20 @@ public class BufferedWorkingSet {
 
 			while (true) {
 
-				if (buffer_base.size() < prefBufferSize) {
+				if ((currentBufferSize + runningLoadTasksAmount) < prefBufferSize) {
+					// Es werden nicht genügend nachgeladen
 
-					int i = 0;
-					ArrayList<String> indexBuffer = new ArrayList<String>();
-					indexBuffer.addAll(index_base);
-					for (String s0 : indexBuffer) {
-						for (String s1 : runningLoadTasks)
-							if (!s1.equals(s0))
-								break;
-						i++;
+					// Nächstes finden, dass geladen werden soll
+					for (int i = 0; i != index_base.size(); i++) {
+						if (runningLoadTasks.contains(index_base.get(i)))
+							continue; // wird schon geladen
+
+						// --> Bild gefunden das drin ist, gebraucht wird, aber noch nicht geladen wird
+						scheduleLoadTask(index_base.get(i),
+								sourceDir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_NEW);
+						break; // nicht weiter suchen
 					}
 
-					if (i > prefBufferSize)
-						continue; // Noch nicht alle geschueldeten fertig. Theoretisch ist der Buffer voll.
-									// Praktisch brauchen die Tasks nich ein bisschen
-
-					// neuen Task beauftragen
-					scheduleLoadTask(index_base.get(i), sourceDir + FileManager.REL_PATH_ORIGINAL_NEW);
 				}
 
 				try {
@@ -351,10 +385,11 @@ public class BufferedWorkingSet {
 			}
 
 		}
-	});
+	}, "Buffer-Update-Loop");
 
 	private void scheduleLoadTask(final String name, String dir) {
-
+		System.out.println("[info] scheduled loading " + name);
+		runningLoadTasksAmount++;
 		runningLoadTasks.add(name);
 
 		new Thread(new Runnable() {
@@ -363,10 +398,13 @@ public class BufferedWorkingSet {
 			public void run() {
 				Image img = FileManager.load(new File(dir + "\\" + name));
 				buffer_base.put(name, new SignedImage(name, img));
+				currentBufferSize++;
+				runningLoadTasksAmount--;
 				runningLoadTasks.remove(name);
+				System.out.println("[info] finished loading " + name);
 			}
 
-		}).start();
+		}, "ImageLoader-" + name).start();
 
 	}
 
@@ -379,32 +417,28 @@ public class BufferedWorkingSet {
 		return FileManager.rescale(i, PREVIEW_SIZE, PREVIEW_SCALE_ON_WIDTH);
 	}
 
-	private ArrayList<String> getIndex_base() {
+	public ArrayList<String> getIndex_base() {
 		return index_base;
 	}
 
-	private ArrayList<String> getIndex_trash() {
+	public ArrayList<String> getIndex_trash() {
 		return index_trash;
 	}
 
-	private ArrayList<String> getIndex_copy() {
+	public ArrayList<String> getIndex_copy() {
 		return index_copy;
 	}
 
-	private ArrayList<String> getIndex_base_keep() {
+	public ArrayList<String> getIndex_base_keep() {
 		return index_base_keep;
-	}
-
-	public void stamp(Image thumb) {
-		info = WorkingSetInfo.gen(thumb);
 	}
 
 	public boolean isFirst() {
 		return first;
 	}
 
-	public int getStartSize() {
-		return startSize;
+	private void setInfo(WorkingSetInfo info) {
+		this.info = info;
 	}
 
 	public WorkingSetInfo getInfo() {
@@ -422,11 +456,27 @@ public class BufferedWorkingSet {
 		return null;
 	}
 
-	private static String genName() {
+	public static String genName() {
 		return RANDOM.nextInt(Integer.MAX_VALUE) + (int) (System.currentTimeMillis() % 100000) + ".png";
 	}
 
 	public void kickOffUpdateLoop() {
+
+		// Buffer füllen
+		for (int i = 0; i != prefBufferSize; i++) {
+
+			if (i == index_base.size())
+				break; // limit
+
+			String name = index_base.get(i);
+			Image img = FileManager
+					.load(new File(sourceDir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_NEW + "\\" + name));
+			buffer_base.put(name, new SignedImage(name, img));
+			currentBufferSize++;
+			System.out.println("[info] pre-buffered " + name);
+			Main.loadProgress += 0.06 / prefBufferSize;
+		}
+
 		bufferUpdateLoop.start();
 	}
 
@@ -435,6 +485,54 @@ public class BufferedWorkingSet {
 		FileManager.delContent(new File(FOLDER_TEMP.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_SEEN));
 		FileManager.delContent(new File(FOLDER_TEMP.getAbsolutePath() + FileManager.REL_PATH_COPY));
 		FileManager.delContent(new File(FOLDER_TEMP.getAbsolutePath() + FileManager.REL_PATH_TRASH));
+	}
+
+	public int getAmountSeen() {
+		return index_base_keep.size();
+	}
+
+	public int getAmountUnseen() {
+		return index_base.size();
+	}
+
+	public int getAmountTrash() {
+		return index_trash.size();
+	}
+
+	public int getAmountCopys() {
+		return index_copy.size();
+	}
+
+	public File getSourceDir() {
+		return sourceDir;
+	}
+
+	public String getOriginalKey(String mirror) {
+		for (String s : index_base)
+			if (s.equals(mirror))
+				return s;
+		for (String s : index_base_keep)
+			if (s.equals(mirror))
+				return s;
+		for (String s : index_trash)
+			if (s.equals(mirror))
+				return s;
+		for (String s : index_copy)
+			if (s.equals(mirror))
+				return s;
+		return null;
+	}
+
+	public int getRunningCopyTasks() {
+		return runningCopyTasks;
+	}
+
+	private int getImagesInRAM() {
+		return imagesInRAM;
+	}
+
+	private void setImageInRAM(int i) {
+		imagesInRAM = i;
 	}
 
 }

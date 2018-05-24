@@ -1,16 +1,10 @@
 package application;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-
-import javax.imageio.ImageIO;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.embed.swing.SwingFXUtils;
-import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
@@ -18,15 +12,16 @@ import javafx.stage.Stage;
 public class Main extends Application {
 
 	public static final String PATH = new File("").getAbsolutePath();
-	private ArrayList<Image> baseImages = new ArrayList<Image>();
 
-	private double loadProgress = 0;
+	public static double loadProgress = 0;
+	public static double progressPerImage = 0;
 	private MainWindow mainWindow;
 	private ProgressWindow progressWindow;
+	private BufferedWorkingSet workingSet = null;
 
 	@Override
 	public void start(Stage primaryStage) {
-		
+
 		try {
 
 			FileChooser fileChooser = new FileChooser();
@@ -39,55 +34,49 @@ public class Main extends Application {
 				System.out.println("Abbruch");
 				System.exit(0);
 			}
+			progressPerImage = 0.94 / files.size();
+
 			progressWindow = new ProgressWindow("Programm lädt", "Bilder werden geladen...", false);
 			progressWindow.show();
-			// Einlesen
-			new Thread(new Runnable() {
+
+			// Tatsächlich laden
+			Thread actualLoadingThread = new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					int i = 1;
-					for (File f : files) {
-						System.out.println();
-						try {
-							baseImages.add(SwingFXUtils.toFXImage(ImageIO.read(f), null));
-						} catch (IOException e) {
-							System.err.println("Ein Bild wurde nicht geladen");
-						}
-						loadProgress = ((double) i) / files.size();
-						i++;
+					try {
+						workingSet = BufferedWorkingSet.genNew(files);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
 					}
-					// files.clear();
-					// System.gc();
 				}
-			}).start();
-			// Darstellen
-			new Thread(new Runnable() {
+			}, "loading-main");
+			actualLoadingThread.setPriority(Thread.NORM_PRIORITY);
+			actualLoadingThread.start();
 
+			// Lade-Fenster updaten
+			new Thread(new Runnable() {
 				@Override
 				public void run() {
-					while (loadProgress < 1.0) {
+					while (workingSet == null) {
 						progressWindow.setValue(loadProgress);
 						try {
-							Thread.sleep(10);
+							Thread.sleep(50);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
-					Platform.runLater(new Runnable() {
 
+					// Laden beendet
+					Platform.runLater(new Runnable() {
 						@Override
 						public void run() {
-							progressWindow.setMessage("Programm wird geladen...");
-							progressWindow.setAlwaysOnTop(true);
-							// HauptFenster initialisierens
-							mainWindow = new MainWindow(primaryStage, progressWindow,
-									new WorkingSet(baseImages, null, null, true));
+							mainWindow = new MainWindow(primaryStage, progressWindow, workingSet);
 							progressWindow.close();
 						}
 					});
 				}
-			}).start();
+			}, "prog-window-update").start();
 			// ---- Laden ende ------
 
 		} catch (Exception e) {

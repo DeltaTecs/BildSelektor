@@ -14,16 +14,18 @@ public class WorkingSetInfo {
 	private String header;
 	private Image thumbnail;
 	private long date;
+	private int startSize;
 
-	public WorkingSetInfo(String title, Image image, long date, String header) {
+	public WorkingSetInfo(String title, Image image, long date, String header, int startSize) {
 		super();
 		this.title = title;
 		this.thumbnail = image;
 		this.date = date;
 		this.header = header;
+		this.startSize = startSize;
 	}
 
-	public static WorkingSetInfo gen(Image thump) {
+	public static WorkingSetInfo gen(Image thump, int startSize) {
 
 		Calendar cal = Calendar.getInstance();
 		cal.setTime(new Date());
@@ -35,7 +37,7 @@ public class WorkingSetInfo {
 		String t = day + ". " + month + " " + year;
 		String h = year + "---" + month_index + "_" + month + "---" + day + "___"
 				+ (System.currentTimeMillis() % 1000000);
-		return new WorkingSetInfo(t, FileManager.rescale(thump, 120, true), System.currentTimeMillis(), h);
+		return new WorkingSetInfo(t, FileManager.rescale(thump, 120, true), System.currentTimeMillis(), h, startSize);
 	}
 
 	public String getTitle() {
@@ -64,6 +66,10 @@ public class WorkingSetInfo {
 
 	public int getYearDifferenceToNow() {
 		return (int) ((System.currentTimeMillis() - date) / (long) (1000 * 60 * 60 * 24 * 30 * 370));
+	}
+
+	public int getStartSize() {
+		return startSize;
 	}
 
 }

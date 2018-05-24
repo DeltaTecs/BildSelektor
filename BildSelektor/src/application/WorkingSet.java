@@ -31,7 +31,7 @@ public class WorkingSet {
 	}
 	
 	public void stamp() {
-		info = WorkingSetInfo.gen(base.get(0));
+//		info = WorkingSetInfo.gen(base.get(0));
 	}
 	
 

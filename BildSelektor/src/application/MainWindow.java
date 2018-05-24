@@ -1,5 +1,8 @@
 package application;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -12,6 +15,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.effect.PerspectiveTransform;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelReader;
@@ -78,9 +82,9 @@ public class MainWindow {
 	private CheckBox checkCopySave;
 	private Button buttonCut;
 
-	private WorkingSet workingSet;
-	private Image currentImage = null;
-	private Image storeImage = null;
+	private BufferedWorkingSet workingSet;
+	private SignedImage currentImage = null;
+	private SignedImage storeImage = null;
 	private int turningAngle = 0;
 	private boolean cuttingMode = false;
 	private double cutting_x = 0.1, cutting_y = 0.1, cutting_width = 0.8, cutting_height = 0.8;
@@ -88,12 +92,11 @@ public class MainWindow {
 	private double show_press_x, show_press_y;
 	private int show_press_sector; // 0: Oben; 1: Unten; 2: Links; 3: Rechts; 4: Mitte
 
-	public MainWindow(Stage stage, ProgressWindow pw, WorkingSet workingSet) {
+	public MainWindow(Stage stage, ProgressWindow pw, BufferedWorkingSet workingSet) {
 		// init, layout und canvases
 		pw.setValue(0.1);
 		this.workingSet = workingSet;
-		workingSet.stamp();
-		currentImage = workingSet.getBase().get(workingSet.getBase().size() - 1);
+		currentImage = workingSet.getNextUnseen();
 		layout_root = new BorderPane();
 		scene = new Scene(layout_root, 1200, 700);
 		scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
@@ -137,9 +140,9 @@ public class MainWindow {
 			return;
 		}
 		layout_canvasdescription = new HBox();
-		label_trash = new Label("Gelöscht\n(" + workingSet.getTrash().size() + ")");
-		label_original = new Label("übrige Originale\n(" + workingSet.getBase().size() + ")");
-		label_copy = new Label("Kopien\n(" + workingSet.getCopy().size() + ")");
+		label_trash = new Label("Gelöscht\n(" + workingSet.getAmountTrash() + ")");
+		label_original = new Label("übrige Originale\n(" + workingSet.getAmountUnseen() + ")");
+		label_copy = new Label("Kopien\n(" + workingSet.getAmountCopys() + ")");
 		label_trash.setTextAlignment(TextAlignment.CENTER);
 		label_original.setTextAlignment(TextAlignment.CENTER);
 		label_copy.setTextAlignment(TextAlignment.CENTER);
@@ -252,15 +255,15 @@ public class MainWindow {
 		int x0, y0, width0, height0;
 		int x, y, width, height;
 		double iwidth, iheight;
-		
+
 		if (angle == 0 || angle == 180) {
 			iwidth = in.getWidth();
 			iheight = in.getHeight();
 		} else {
 			iwidth = in.getHeight();
 			iheight = in.getWidth();
-		} 
-		
+		}
+
 		x0 = (int) (iwidth * rx);
 		y0 = (int) (iheight * ry);
 		width0 = (int) (iwidth * rwidth);
@@ -290,7 +293,7 @@ public class MainWindow {
 			new Exception("Invalid angle").printStackTrace();
 			return null;
 		}
-		
+
 		return new WritableImage(reader, x, y, width, height);
 	}
 
@@ -379,21 +382,21 @@ public class MainWindow {
 	}
 
 	private void initExitPanel() {
-		
+
 		layout_left_exit = new HBox();
 		layout_left_exit_content = new GridPane();
 		layout_left_exit_content.setPrefWidth(CANVAS_COLLECTION_WIDTH);
 		layout_left_exit_content.setVgap(5);
 		layout_left_exit_content.setHgap(10);
-		
+
 		Line l1 = new Line(0, 0, 0, 0);
 		l1.endYProperty().bind(layout_root.heightProperty());
 		l1.setStroke(COLOR_LINE);
-		
+
 		Label headlineExit = new Label("Beenden:");
 		headlineExit.setStyle("-fx-text-fill: rgb(248,248,248);" + "	-fx-font-size: 17px; -fx-font-weight: bold;");
 		headlineExit.setPadding(new Insets(5, 5, 0, 5));
-		
+
 		Button buttonFinish = new Button("Jetzt komplett beenden", getImageView(img_export, 40, 40));
 		Button buttonSave = new Button("Später weiter sortieren", getImageView(img_import, 40, 40));
 		buttonFinish.setFont(Font.font(16));
@@ -405,39 +408,48 @@ public class MainWindow {
 		buttonSave.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
-				FileManager.saveWorkingSet(workingSet);
+				try {
+					if (storeImage != null)
+						workingSet.addUnSeen(storeImage);
+					FileManager.saveWorkingSet(workingSet);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 		});
-		
+
 		Button buttonAbort = new Button("Abbrechen", getImageView(img_red_x, 30, 30));
 		buttonAbort.setPrefHeight(40);
 		buttonAbort.setPadding(new Insets(10, 48, 10, 12));
 		GridPane.setMargin(buttonAbort, new Insets(40, 0, 0, 10));
 		buttonAbort.setOnAction(e -> closeExitPanel());
-		
+
 		layout_left_exit_content.add(headlineExit, 0, 0, 2, 1);
 		layout_left_exit_content.add(genLine(), 0, 1, 2, 1);
 		layout_left_exit_content.add(buttonSave, 0, 2, 2, 1);
 		layout_left_exit_content.add(buttonFinish, 0, 3, 2, 1);
 		layout_left_exit_content.add(buttonAbort, 0, 4);
 		layout_left_exit.getChildren().addAll(layout_left_exit_content, l1);
-		
-		
+
 	}
-	
+
 	private void openExitPanel() {
 		layout_root.setLeft(layout_left_exit);
+		if (currentImage != null)
+			workingSet.addUnSeen(currentImage);
 		storeImage = currentImage;
 		currentImage = null;
 		canvasShowcase.draw();
 	}
-	
+
 	private void closeExitPanel() {
 		layout_root.setLeft(layout_left_basis);
 		currentImage = storeImage;
 		canvasShowcase.draw();
+		if (storeImage != null)
+			workingSet.removeUnSeen(storeImage);
 	}
-	
+
 	private void initOptionsPanel() {
 
 		layout_left_options = new HBox();
@@ -526,7 +538,10 @@ public class MainWindow {
 
 			@Override
 			public void handle(ActionEvent event) {
-				currentImage = cut(currentImage, cutting_x, cutting_y, cutting_width, cutting_height, turningAngle);
+				String name = currentImage.getName();
+				Image img = currentImage.getImage();
+				currentImage = new SignedImage(name,
+						cut(img, cutting_x, cutting_y, cutting_width, cutting_height, turningAngle));
 				layout_root.setLeft(layout_left_options);
 				cuttingMode = false;
 			}
@@ -567,22 +582,32 @@ public class MainWindow {
 		buttonFinish.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
-				
+
 				if (checkOriginalSave.isSelected()) // Original behalten
-					workingSet.getBase_keep().add(storeImage);
-				
-				if (checkCopySave.isSelected()) // Kopie anfertigen
-					workingSet.getCopy().add(currentImage);
-				
-				workingSet.getBase().remove(storeImage);
+					workingSet.addSeen(storeImage);
+
+				if (checkCopySave.isSelected()) { // Kopie anfertigen
+					workingSet.addCopy(currentImage.getImage(), () -> Platform.runLater(new Runnable() {
+
+						@Override
+						public void run() {
+							redrawCollectionCanvas();
+							updateImageAmounts();
+						}
+
+					}));
+				}
+
 				closeOptionsPanel();
-				if (workingSet.getBase().size() > 0)
-					currentImage = workingSet.getBase().get(workingSet.getBase().size() - 1);
+				SignedImage nextImage = workingSet.getNextUnseen();
+				if (nextImage != null)
+					currentImage = nextImage;
 				else {
 					button_action_save.setDisable(true);
 					button_action_delete.setDisable(true);
 					currentImage = null;
 				}
+				System.gc();
 				updateImageAmounts();
 				new Thread(() -> Platform.runLater(() -> redrawCollectionCanvas())).start();
 				canvasShowcase.draw();
@@ -620,9 +645,9 @@ public class MainWindow {
 	}
 
 	private void updateImageAmounts() {
-		label_trash.setText("Gelöscht\n(" + workingSet.getTrash().size() + ")");
-		label_original.setText("übrige Originale\n(" + workingSet.getBase().size() + ")");
-		label_copy.setText("Kopien\n(" + workingSet.getCopy().size() + ")");
+		label_trash.setText("Gelöscht\n(" + workingSet.getAmountTrash() + ")");
+		label_original.setText("übrige Originale\n(" + workingSet.getAmountUnseen() + ")");
+		label_copy.setText("Kopien\n(" + workingSet.getAmountCopys() + ")");
 	}
 
 	private void rotateLeft() {
@@ -645,15 +670,16 @@ public class MainWindow {
 
 	private void action_deleteImage() {
 
-		workingSet.getBase().remove(currentImage);
-		workingSet.getTrash().add(currentImage);
-		if (workingSet.getBase().size() > 0)
-			currentImage = workingSet.getBase().get(workingSet.getBase().size() - 1);
+		workingSet.addTrash(currentImage);
+		SignedImage nextImage = workingSet.getNextUnseen();
+		if (nextImage != null)
+			currentImage = nextImage;
 		else {
 			button_action_save.setDisable(true);
 			button_action_delete.setDisable(true);
 			currentImage = null;
 		}
+		System.gc();
 		updateImageAmounts();
 		new Thread(() -> Platform.runLater(() -> redrawCollectionCanvas())).start();
 		canvasShowcase.draw();
@@ -670,7 +696,7 @@ public class MainWindow {
 				return;
 
 			Image snapshot = null;
-			ImageView currentImage_view = new ImageView(currentImage);
+			ImageView currentImage_view = new ImageView(currentImage.getImage());
 			currentImage_view.setRotate(turningAngle);
 			snapshot = currentImage_view.snapshot(null, null);
 
@@ -792,12 +818,21 @@ public class MainWindow {
 
 		// Original - Stapel
 		double img_base_canvasheight = icon_basey + 1;
-		double img_base_spacey = (double) img_base_canvasheight / workingSet.getStartSize();
+		double img_base_spacey = (double) img_base_canvasheight / workingSet.getInfo().getStartSize();
 		double img_base_y = img_base_canvasheight;
-		for (Image i : workingSet.getBase()) {
+		if (img_base_spacey > 20)
+			img_base_spacey = 20;
+		ArrayList<String> base = bufferReversed(workingSet.getIndex_base());
+		for (String n : base) {
+			Image i = workingSet.getPreview(n).getImage();
+
+			// Effekt
+			g0.setEffect(getTransform(icon_basex + (img_trash_background.getWidth() * 0.125f) + 34, img_base_y,
+					(img_box_background.getWidth() * 0.19f) - 40));
+
 			g0.drawImage(i, icon_basex + (img_trash_background.getWidth() * 0.125f) + 34, img_base_y,
 					(img_box_background.getWidth() * 0.19f) - 40, (img_box_background.getWidth() * 0.19f) - 40);
-			if (workingSet.getStartSize() < 38) {
+			if (workingSet.getInfo().getStartSize() < 38) {
 				// Schatten
 				LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
 						new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
@@ -811,12 +846,19 @@ public class MainWindow {
 
 		// Müll - Stapel
 		double img_trash_canvasheight = icon_basey - 50;
-		double img_trash_spacey = (double) img_trash_canvasheight / workingSet.getStartSize();
+		double img_trash_spacey = (double) img_trash_canvasheight / workingSet.getInfo().getStartSize();
 		double img_trash_y = img_trash_canvasheight;
-		for (Image i : workingSet.getTrash()) {
+		if (img_trash_spacey > 20)
+			img_trash_spacey = 20;
+		for (String n : workingSet.getIndex_trash()) {
+			Image i = workingSet.getPreview(n).getImage();
+
+			// Effekt
+			g0.setEffect(getTransform(icon_basex + 3, img_trash_y, (img_box_background.getWidth() * 0.19f) - 40));
+
 			g0.drawImage(i, icon_basex + 3, img_trash_y, (img_box_background.getWidth() * 0.19f) - 40,
 					(img_box_background.getWidth() * 0.19f) - 40);
-			if (workingSet.getStartSize() < 38) {
+			if (workingSet.getInfo().getStartSize() < 38) {
 				// Schatten
 				LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
 						new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
@@ -829,13 +871,23 @@ public class MainWindow {
 
 		// Kopie - Stapel
 		double img_copy_canvasheight = icon_basey + 20;
-		double img_copy_spacey = (double) img_copy_canvasheight / workingSet.getStartSize();
+		double img_copy_spacey = (double) img_copy_canvasheight / workingSet.getInfo().getStartSize();
 		double img_copy_y = img_copy_canvasheight;
+		if (img_copy_spacey > 20)
+			img_copy_spacey = 20;
 		boolean firstImage = true;
-		for (Image i : workingSet.getCopy()) {
+		ArrayList<String> copys = new ArrayList<String>();
+		copys.addAll(workingSet.getIndex_copy());
+		for (String n : copys) {
+			Image i = workingSet.getPreview(n).getImage();
+
+			// Effekt
+			g0.setEffect(getTransform(icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67, img_copy_y,
+					(img_box_background.getWidth() * 0.19f) - 40));
+
 			g0.drawImage(i, icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67, img_copy_y,
 					(img_box_background.getWidth() * 0.19f) - 40, (img_box_background.getWidth() * 0.19f) - 40);
-			if (workingSet.getStartSize() < 38 && !firstImage) {
+			if (workingSet.getInfo().getStartSize() < 38 && !firstImage) {
 				// Schatten
 				LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
 						new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
@@ -848,6 +900,8 @@ public class MainWindow {
 			img_copy_y -= img_copy_spacey;
 		}
 
+		g0.setEffect(null);
+
 		// foreground
 		g0.drawImage(img_trash_foreground, icon_basex, icon_basey, img_trash_foreground.getWidth() * 0.125f,
 				img_trash_foreground.getHeight() * 0.125f);
@@ -855,6 +909,29 @@ public class MainWindow {
 		g0.drawImage(img_box_foreground, icon_basex + (img_box_foreground.getWidth() * 0.125f) + icon_spacex,
 				icon_basey + 34, img_box_foreground.getWidth() * 0.19f, img_box_foreground.getHeight() * 0.19f);
 
+	}
+
+	private static PerspectiveTransform getTransform(double x, double y, double width) {
+
+		double hf = 0.3; // Height Factor (0 < hf < 1)
+		double df = 0.2; // Deepth-Factor (0 < df < 0.5)
+
+		double heightDif = (1 - hf) * width;
+
+		PerspectiveTransform pt = new PerspectiveTransform();
+
+		pt.setUlx(x + (df * width));
+		pt.setUly(y + heightDif);
+
+		pt.setUrx(x + width - (df * width));
+		pt.setUry(y + heightDif);
+
+		pt.setLlx(x);
+		pt.setLly(y + width * hf + heightDif);
+
+		pt.setLrx(x + width);
+		pt.setLry(y + width * hf + heightDif);
+		return pt;
 	}
 
 	public static ImageView getImageView(Image img, int width, int height) {
@@ -868,6 +945,13 @@ public class MainWindow {
 		Line l = new Line(0, 0, CANVAS_COLLECTION_WIDTH, 0);
 		l.setStroke(COLOR_LINE);
 		return l;
+	}
+
+	public static ArrayList<String> bufferReversed(Collection<String> c) {
+		ArrayList<String> a = new ArrayList<String>();
+		for (String s : c)
+			a.add(0, s);
+		return a;
 	}
 
 }
