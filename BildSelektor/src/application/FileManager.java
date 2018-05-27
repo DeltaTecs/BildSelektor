@@ -32,8 +32,8 @@ public class FileManager {
 	public static final String NAME_INFO_FILE = "title.info";
 	private static final String FLAG_SPLIT = "%";
 
-	public static void saveWorkingSet(BufferedWorkingSet ws) throws InterruptedException {
-		
+	public static void saveWorkingSetByCopying(BufferedWorkingSet ws) throws InterruptedException {
+
 		long startTime = System.currentTimeMillis();
 
 		new File(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_ORIGINAL_SEEN).mkdirs();
@@ -48,6 +48,7 @@ public class FileManager {
 		for (File f : new File(ws.getSourceDir().getAbsolutePath() + REL_PATH_ORIGINAL_NEW).listFiles()) {
 			if (!f.exists() || f.isDirectory())
 				continue; // <<-- Fehler. Darf nicht passieren da nur bilder hier..
+			System.out.println("[DEBUG] org. found: " + f.getName());
 			files.put(ws.getOriginalKey(f.getName()), f);
 		}
 		for (File f : new File(ws.getSourceDir().getAbsolutePath() + REL_PATH_ORIGINAL_SEEN).listFiles()) {
@@ -121,8 +122,106 @@ public class FileManager {
 		writer.print(ws.getInfo().getTitle() + FLAG_SPLIT + ws.getInfo().getDate() + FLAG_SPLIT
 				+ ws.getInfo().getStartSize());
 		writer.close();
-		
-		System.out.println("[info] finished saving: " + ((int)(100 * (System.currentTimeMillis() - startTime) / (1000 * 60.0)) / 100.0) + " minutes used.");
+
+		System.out.println("[info] finished saving: "
+				+ ((int) (100 * (System.currentTimeMillis() - startTime) / (1000 * 60.0)) / 100.0) + " minutes used.");
+	}
+
+	public static void saveWorkingSetByMoving(BufferedWorkingSet ws) throws InterruptedException {
+
+		new File(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_ORIGINAL_SEEN).mkdirs();
+		new File(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_ORIGINAL_NEW).mkdirs();
+		new File(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_COPY).mkdirs();
+		new File(Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + REL_PATH_TRASH).mkdirs();
+
+		// Alle Dateien detektieren
+		HashMap<String, File> files = new HashMap<String, File>();
+		// Ordner abgehen...
+		System.out.println("[info] indexing existing files");
+		for (File f : new File(ws.getSourceDir().getAbsolutePath() + REL_PATH_ORIGINAL_NEW).listFiles()) {
+			if (!f.exists() || f.isDirectory())
+				continue; // <<-- Fehler. Darf nicht passieren da nur bilder hier..
+			files.put(ws.getOriginalKey(f.getName()), f);
+		}
+		for (File f : new File(ws.getSourceDir().getAbsolutePath() + REL_PATH_ORIGINAL_SEEN).listFiles()) {
+			if (!f.exists() || f.isDirectory())
+				continue; // <<-- Fehler. Darf nicht passieren da nur bilder hier..
+			files.put(ws.getOriginalKey(f.getName()), f);
+		}
+		for (File f : new File(ws.getSourceDir().getAbsolutePath() + REL_PATH_TRASH).listFiles()) {
+			if (!f.exists() || f.isDirectory())
+				continue; // <<-- Fehler. Darf nicht passieren da nur bilder hier..
+			files.put(ws.getOriginalKey(f.getName()), f);
+		}
+		while (ws.getRunningCopyTasks() > 0) {
+			Thread.sleep(10);
+		}
+		for (File f : new File(ws.getSourceDir().getAbsolutePath() + REL_PATH_COPY).listFiles()) {
+			if (!f.exists() || f.isDirectory())
+				continue; // <<-- Fehler. Darf nicht passieren da nur bilder hier..
+			files.put(ws.getOriginalKey(f.getName()), f);
+		}
+
+		// Alle abspeichern..
+		for (String nameOriginalNew : ws.getIndex_base()) {
+			if (!files.get(nameOriginalNew).renameTo(new File(Main.PATH + REL_PATH_WORKINGSETS + "\\"
+					+ ws.getInfo().getHeader() + REL_PATH_ORIGINAL_NEW + "\\" + nameOriginalNew)))
+				System.err.println("[WARN] saving failed! File: " + nameOriginalNew);
+			else
+				System.out.println("[info] saved " + nameOriginalNew + " (new)");
+		}
+		for (String nameOriginalSeen : ws.getIndex_base_keep()) {
+			if (!files.get(nameOriginalSeen).renameTo(new File(Main.PATH + REL_PATH_WORKINGSETS + "\\"
+					+ ws.getInfo().getHeader() + REL_PATH_ORIGINAL_SEEN + "\\" + nameOriginalSeen)))
+				System.err.println("[WARN] saving failed! File: " + nameOriginalSeen);
+			else
+				System.out.println("[info] saved " + nameOriginalSeen + " (seen)");
+		}
+		for (String nameCopy : ws.getIndex_copy()) {
+			if (!files.get(nameCopy).renameTo(new File(Main.PATH + REL_PATH_WORKINGSETS + "\\"
+					+ ws.getInfo().getHeader() + REL_PATH_COPY + "\\" + nameCopy)))
+				System.err.println("[WARN] saving failed! File: " + nameCopy);
+			else
+				System.out.println("[info] saved " + nameCopy + " (copy)");
+		}
+		for (String nameTrash : ws.getIndex_trash()) {
+			if (!files.get(nameTrash).renameTo(new File(Main.PATH + REL_PATH_WORKINGSETS + "\\"
+					+ ws.getInfo().getHeader() + REL_PATH_TRASH + "\\" + nameTrash)))
+				System.err.println("[WARN] saving failed! File: " + nameTrash);
+			else
+				System.out.println("[info] saved " + nameTrash + " (trash)");
+		}
+
+		// Thumbnail
+		try {
+			ImageIO.write(SwingFXUtils.fromFXImage(ws.getInfo().getThumbnail(), null), "png", new File(
+					Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + "\\" + NAME_THUMBNAIL));
+		} catch (IOException e) {
+			System.err.println("Speichern des Thumbnails gescheitert");
+			e.printStackTrace();
+		}
+
+		// Info
+		File titleInfo = new File(
+				Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + "\\" + NAME_INFO_FILE);
+		try {
+			titleInfo.createNewFile();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		PrintWriter writer = null;
+		try {
+			writer = new PrintWriter(
+					Main.PATH + REL_PATH_WORKINGSETS + "\\" + ws.getInfo().getHeader() + "\\" + NAME_INFO_FILE,
+					"UTF-8");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		writer.print(ws.getInfo().getTitle() + FLAG_SPLIT + ws.getInfo().getDate() + FLAG_SPLIT
+				+ ws.getInfo().getStartSize());
+		writer.close();
 	}
 
 	public static void overrideWorkingSet(String baseHeader, BufferedWorkingSet newWs) throws InterruptedException {
@@ -130,7 +229,7 @@ public class FileManager {
 		File baseDir = new File(Main.PATH + REL_PATH_WORKINGSETS + "\\" + baseHeader);
 		delDir(baseDir);
 
-		saveWorkingSet(newWs);
+		saveWorkingSetByCopying(newWs);
 	}
 
 	public static WorkingSetInfo[] getWorkingSetInfos() {
@@ -181,7 +280,10 @@ public class FileManager {
 			System.err.println("Failed to load info File for working set");
 			e.printStackTrace();
 		}
-		return new WorkingSetInfo(title, thumbnail, date, header, startSize);
+		int unseen = 0;
+		if (new File(dir.getAbsolutePath() + REL_PATH_ORIGINAL_NEW).listFiles() != null)
+			unseen = new File(dir.getAbsolutePath() + REL_PATH_ORIGINAL_NEW).listFiles().length;
+		return new WorkingSetInfo(title, thumbnail, date, header, startSize, unseen);
 	}
 
 	public static Image[] loadAll(String dir) {
@@ -253,7 +355,7 @@ public class FileManager {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public static void saveAndUpdateProgress(String dir, Image i, String name) {
 
 		File f = new File(dir + "\\" + name);
@@ -331,18 +433,17 @@ public class FileManager {
 		PixelWriter writer = res.getPixelWriter();
 
 		try {
-			for (int x = 0; (x * s) < res.getWidth() && x < (int) base.getWidth(); x++)
-				for (int y = 0; (y * s) < res.getHeight() && y < (int) base.getHeight(); y++) {
-					int rgba = reader.getArgb(x, y);
-					for (int dy = 0; dy < s; dy++)
-						for (int dx = 0; dx < s; dx++) {
-							writer.setArgb((int) (x * s) + dx, (int) (y * s) + dy, rgba);
-
-						}
-				}
+		for (int x = 0; x < (int) base.getWidth(); x++)
+			for (int y = 0; y < (int) base.getHeight(); y++) {
+				int rgba = reader.getArgb(x, y);
+				for (int dy = 0; dy < s && dy + (int) (y * s) < res.getHeight(); dy++)
+					for (int dx = 0; dx < s && dx + (int) (x * s) < res.getWidth(); dx++) {
+						writer.setArgb((int) (x * s) + dx, (int) (y * s) + dy, rgba);
+					}
+			}
+		
 		} catch (IndexOutOfBoundsException e) {
-			// Shut up and pass.
-			System.err.println("[WARN] indexOutOfBounds: FileManager.rescale(Image, int, boolean)");
+			System.err.println("[WARN] rescaling failed: FileManager.rescale(Image, int, boolean");
 		}
 
 		return res;

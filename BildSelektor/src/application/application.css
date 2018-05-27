@@ -33,6 +33,56 @@
 	-fx-text-fill: rgb(190, 190, 190);
 }
 
+.wsbutton{
+	-fx-background-color: rgb(50, 50, 50);
+	-fx-text-fill: rgb(230, 230, 230);
+	-fx-border-color: rgb(247,247,247);
+	-fx-background-radius: 9;
+	-fx-border-radius: 9, 9, 9, 9;
+	-fx-border-width: 3;
+}
+
+.wsbutton:hover{
+	-fx-background-color: rgb(40, 40, 40);
+	-fx-text-fill: rgb(210, 210, 210);
+	-fx-background-radius: 9;
+}
+
+.wsbutton:pressed{
+	-fx-background-color: rgb(35, 35, 35);
+	-fx-text-fill: rgb(190, 190, 190);
+	-fx-background-radius: 9;
+}
+
+.scroll-pane {
+    -fx-background-color:  rgb(74,74,74);
+}
+.scroll-pane > .viewport {
+   -fx-background-color: transparent;
+}
+
+.scroll-bar:horizontal, .scroll-bar:vertical{
+    -fx-background-color:transparent;
+}
+
+.increment-button, .decrement-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar:horizontal .track,
+.scroll-bar:vertical .track{
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 0em;
+}
+
+.scroll-bar:horizontal .thumb,
+.scroll-bar:vertical .thumb {
+    -fx-background-color: rgb(230, 230, 230);
+    -fx-background-radius: 5em;
+}
+
 .check-box {
 	-fx-text-fill: rgb(248,248,248);
 	-fx-font-size: 14px;

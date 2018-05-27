@@ -9,6 +9,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -35,6 +36,7 @@ import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 public class MainWindow {
 
@@ -47,21 +49,24 @@ public class MainWindow {
 	private static final double GRIP_HEIGHT = 30;
 	private static final double GRIP_LENGTH = 60;
 
-	private Image img_box_background;
-	private Image img_trash_background;
-	private Image img_box_foreground;
-	private Image img_trash_foreground;
-	private Image img_arrow_left;
-	private Image img_arrow_right;
-	private Image img_red_x;
-	private Image img_green_tick;
-	private Image img_floppydisk;
-	private Image img_scissors;
-	private Image img_import;
-	private Image img_export;
+	public static Image img_box_background;
+	public static Image img_trash_background;
+	public static Image img_box_foreground;
+	public static Image img_trash_foreground;
+	public static Image img_arrow_left;
+	public static Image img_arrow_right;
+	public static Image img_red_x;
+	public static Image img_green_tick;
+	public static Image img_floppydisk;
+	public static Image img_scissors;
+	public static Image img_import;
+	public static Image img_export;
+	public static Image img_loadFromFloppydisk;
 
+	private Stage stage;
 	private Scene scene;
 	private GraphicsContext g0;
+	private Pane paneShowcaseCanvas;
 	private BorderPane layout_root;
 	private VBox layout_left_basis_content;
 	private HBox layout_left_basis;
@@ -81,6 +86,7 @@ public class MainWindow {
 	private CheckBox checkOriginalDelete;
 	private CheckBox checkCopySave;
 	private Button buttonCut;
+	private OverrideSetPane savesetPane = new OverrideSetPane();
 
 	private BufferedWorkingSet workingSet;
 	private SignedImage currentImage = null;
@@ -92,9 +98,9 @@ public class MainWindow {
 	private double show_press_x, show_press_y;
 	private int show_press_sector; // 0: Oben; 1: Unten; 2: Links; 3: Rechts; 4: Mitte
 
-	public MainWindow(Stage stage, ProgressWindow pw, BufferedWorkingSet workingSet) {
+	public MainWindow(Stage stage, BufferedWorkingSet workingSet) {
 		// init, layout und canvases
-		pw.setValue(0.1);
+		this.stage = stage;
 		this.workingSet = workingSet;
 		currentImage = workingSet.getNextUnseen();
 		layout_root = new BorderPane();
@@ -106,11 +112,23 @@ public class MainWindow {
 		canvasShowcase.setOnMousePressed(e -> manageCanvasPressInput(e));
 		canvasShowcase.setOnMouseDragged(e -> manageCanvasDragInput(e));
 
-		Pane p0 = new Pane();
-		BorderPane.setMargin(p0, new Insets(8, 8, 8, 8));
-		canvasShowcase.widthProperty().bind(p0.widthProperty());
-		canvasShowcase.heightProperty().bind(p0.heightProperty());
-		p0.getChildren().add(canvasShowcase);
+		// Exit wenn schlieﬂen
+		stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+			@Override
+			public void handle(WindowEvent t) {
+
+				// ### DEBUG. Sonst "wirklich schlieﬂen?"
+
+				Platform.exit();
+				System.exit(0);
+			}
+		});
+
+		paneShowcaseCanvas = new Pane();
+		BorderPane.setMargin(paneShowcaseCanvas, new Insets(8, 8, 8, 8));
+		canvasShowcase.widthProperty().bind(paneShowcaseCanvas.widthProperty());
+		canvasShowcase.heightProperty().bind(paneShowcaseCanvas.heightProperty());
+		paneShowcaseCanvas.getChildren().add(canvasShowcase);
 
 		layout_left_basis_content = new VBox();
 		layout_left_basis = new HBox();
@@ -118,27 +136,8 @@ public class MainWindow {
 		g0 = canvasCollection.getGraphicsContext2D();
 		layout_left_basis.getChildren().add(layout_left_basis_content);
 		layout_root.setLeft(layout_left_basis);
-		layout_root.setCenter(p0);
-		pw.setValue(0.15);
-		try {
-			img_box_foreground = new Image(this.getClass().getResource("box_foreground.png").toString());
-			img_box_background = new Image(this.getClass().getResource("box.png").toString());
-			img_trash_foreground = new Image(this.getClass().getResource("trash_foreground.png").toString());
-			img_trash_background = new Image(this.getClass().getResource("trash.png").toString());
-			img_arrow_right = new Image(this.getClass().getResource("arrow_right.png").toString());
-			img_arrow_left = new Image(this.getClass().getResource("arrow_left.png").toString());
-			img_red_x = new Image(this.getClass().getResource("red_x.png").toString());
-			img_green_tick = new Image(this.getClass().getResource("green_tick.png").toString());
-			img_floppydisk = new Image(this.getClass().getResource("floppydisk.png").toString());
-			img_scissors = new Image(this.getClass().getResource("scissors.png").toString());
-			img_import = new Image(this.getClass().getResource("import.png").toString());
-			img_export = new Image(this.getClass().getResource("export.png").toString());
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.err.println("Bild laden f¸r ui gescheitert. Exit.");
-			System.exit(-1);
-			return;
-		}
+		layout_root.setCenter(paneShowcaseCanvas);
+
 		layout_canvasdescription = new HBox();
 		label_trash = new Label("Gelˆscht\n(" + workingSet.getAmountTrash() + ")");
 		label_original = new Label("¸brige Originale\n(" + workingSet.getAmountUnseen() + ")");
@@ -225,6 +224,7 @@ public class MainWindow {
 		Button button_exit = new Button("Beenden", getImageView(img_floppydisk, 60, 60));
 		button_exit.setTextAlignment(TextAlignment.RIGHT);
 		button_exit.setPrefWidth(CANVAS_COLLECTION_WIDTH - 20);
+		button_exit.setPrefHeight(80);
 		button_exit.setFont(new Font(16));
 		button_exit.setAlignment(Pos.BASELINE_CENTER);
 		button_exit.setOnAction(e -> openExitPanel());
@@ -238,9 +238,7 @@ public class MainWindow {
 		initOptionsPanel();
 		initExitPanel();
 
-		pw.setValue(0.2);
 		redrawCollectionCanvas();
-		pw.setValue(0.7);
 		stage.setMinHeight(690);
 		stage.setMinWidth(700);
 		stage.setScene(scene);
@@ -408,13 +406,7 @@ public class MainWindow {
 		buttonSave.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
-				try {
-					if (storeImage != null)
-						workingSet.addUnSeen(storeImage);
-					FileManager.saveWorkingSet(workingSet);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+				setView(savesetPane.getLayout_root());
 			}
 		});
 
@@ -443,6 +435,7 @@ public class MainWindow {
 	}
 
 	private void closeExitPanel() {
+		resetViewfocus();
 		layout_root.setLeft(layout_left_basis);
 		currentImage = storeImage;
 		canvasShowcase.draw();
@@ -824,24 +817,28 @@ public class MainWindow {
 			img_base_spacey = 20;
 		ArrayList<String> base = bufferReversed(workingSet.getIndex_base());
 		for (String n : base) {
-			Image i = workingSet.getPreview(n).getImage();
+			try {
+				Image i = workingSet.getPreview(n).getImage();
 
-			// Effekt
-			g0.setEffect(getTransform(icon_basex + (img_trash_background.getWidth() * 0.125f) + 34, img_base_y,
-					(img_box_background.getWidth() * 0.19f) - 40));
+				// Effekt
+				g0.setEffect(getTransform(icon_basex + (img_trash_background.getWidth() * 0.125f) + 34, img_base_y,
+						(img_box_background.getWidth() * 0.19f) - 40));
 
-			g0.drawImage(i, icon_basex + (img_trash_background.getWidth() * 0.125f) + 34, img_base_y,
-					(img_box_background.getWidth() * 0.19f) - 40, (img_box_background.getWidth() * 0.19f) - 40);
-			if (workingSet.getInfo().getStartSize() < 38) {
-				// Schatten
-				LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-						new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
-				g0.setFill(gradient);
-				g0.fillRect(icon_basex + (img_trash_background.getWidth() * 0.125f) + 34,
-						img_base_y + ((img_box_background.getWidth() * 0.19f) - 40),
-						(img_box_background.getWidth() * 0.19f) - 40, 6);
+				g0.drawImage(i, icon_basex + (img_trash_background.getWidth() * 0.125f) + 34, img_base_y,
+						(img_box_background.getWidth() * 0.19f) - 40, (img_box_background.getWidth() * 0.19f) - 40);
+				if (workingSet.getInfo().getStartSize() < 38) {
+					// Schatten
+					LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+							new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
+					g0.setFill(gradient);
+					g0.fillRect(icon_basex + (img_trash_background.getWidth() * 0.125f) + 34,
+							img_base_y + ((img_box_background.getWidth() * 0.19f) - 40),
+							(img_box_background.getWidth() * 0.19f) - 40, 6);
+				}
+				img_base_y -= img_base_spacey;
+			} catch (NullPointerException e) {
+				System.err.println("[WARN] cannot show preview " + n + ". Not initialized.");
 			}
-			img_base_y -= img_base_spacey;
 		}
 
 		// M¸ll - Stapel
@@ -851,22 +848,26 @@ public class MainWindow {
 		if (img_trash_spacey > 20)
 			img_trash_spacey = 20;
 		for (String n : workingSet.getIndex_trash()) {
-			Image i = workingSet.getPreview(n).getImage();
+			try {
+				Image i = workingSet.getPreview(n).getImage();
 
-			// Effekt
-			g0.setEffect(getTransform(icon_basex + 3, img_trash_y, (img_box_background.getWidth() * 0.19f) - 40));
+				// Effekt
+				g0.setEffect(getTransform(icon_basex + 3, img_trash_y, (img_box_background.getWidth() * 0.19f) - 40));
 
-			g0.drawImage(i, icon_basex + 3, img_trash_y, (img_box_background.getWidth() * 0.19f) - 40,
-					(img_box_background.getWidth() * 0.19f) - 40);
-			if (workingSet.getInfo().getStartSize() < 38) {
-				// Schatten
-				LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-						new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
-				g0.setFill(gradient);
-				g0.fillRect(icon_basex + 3, img_trash_y + ((img_box_background.getWidth() * 0.19f) - 40),
-						(img_box_background.getWidth() * 0.19f) - 40, 6);
+				g0.drawImage(i, icon_basex + 3, img_trash_y, (img_box_background.getWidth() * 0.19f) - 40,
+						(img_box_background.getWidth() * 0.19f) - 40);
+				if (workingSet.getInfo().getStartSize() < 38) {
+					// Schatten
+					LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+							new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
+					g0.setFill(gradient);
+					g0.fillRect(icon_basex + 3, img_trash_y + ((img_box_background.getWidth() * 0.19f) - 40),
+							(img_box_background.getWidth() * 0.19f) - 40, 6);
+				}
+				img_trash_y -= img_trash_spacey;
+			} catch (NullPointerException e) {
+				System.err.println("[WARN] cannot show preview " + n + ". Not initialized.");
 			}
-			img_trash_y -= img_trash_spacey;
 		}
 
 		// Kopie - Stapel
@@ -879,25 +880,29 @@ public class MainWindow {
 		ArrayList<String> copys = new ArrayList<String>();
 		copys.addAll(workingSet.getIndex_copy());
 		for (String n : copys) {
-			Image i = workingSet.getPreview(n).getImage();
+			try {
+				Image i = workingSet.getPreview(n).getImage();
 
-			// Effekt
-			g0.setEffect(getTransform(icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67, img_copy_y,
-					(img_box_background.getWidth() * 0.19f) - 40));
+				// Effekt
+				g0.setEffect(getTransform(icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67, img_copy_y,
+						(img_box_background.getWidth() * 0.19f) - 40));
 
-			g0.drawImage(i, icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67, img_copy_y,
-					(img_box_background.getWidth() * 0.19f) - 40, (img_box_background.getWidth() * 0.19f) - 40);
-			if (workingSet.getInfo().getStartSize() < 38 && !firstImage) {
-				// Schatten
-				LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-						new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
-				g0.setFill(gradient);
-				g0.fillRect(icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67,
-						img_copy_y + ((img_box_background.getWidth() * 0.19f) - 40),
-						(img_box_background.getWidth() * 0.19f) - 40, 6);
+				g0.drawImage(i, icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67, img_copy_y,
+						(img_box_background.getWidth() * 0.19f) - 40, (img_box_background.getWidth() * 0.19f) - 40);
+				if (workingSet.getInfo().getStartSize() < 38 && !firstImage) {
+					// Schatten
+					LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+							new Stop(0, new Color(0, 0, 0, 0.8)), new Stop(1, Color.TRANSPARENT));
+					g0.setFill(gradient);
+					g0.fillRect(icon_basex + (2 * img_trash_background.getWidth() * 0.125f) + 67,
+							img_copy_y + ((img_box_background.getWidth() * 0.19f) - 40),
+							(img_box_background.getWidth() * 0.19f) - 40, 6);
+				}
+				firstImage = false;
+				img_copy_y -= img_copy_spacey;
+			} catch (NullPointerException e) {
+				System.err.println("[WARN] cannot show preview " + n + ". Not initialized.");
 			}
-			firstImage = false;
-			img_copy_y -= img_copy_spacey;
 		}
 
 		g0.setEffect(null);
@@ -945,6 +950,14 @@ public class MainWindow {
 		Line l = new Line(0, 0, CANVAS_COLLECTION_WIDTH, 0);
 		l.setStroke(COLOR_LINE);
 		return l;
+	}
+
+	public void setView(BorderPane b) {
+		this.stage.getScene().setRoot(b);
+	}
+
+	public void resetViewfocus() {
+		this.stage.getScene().setRoot(this.layout_root);
 	}
 
 	public static ArrayList<String> bufferReversed(Collection<String> c) {

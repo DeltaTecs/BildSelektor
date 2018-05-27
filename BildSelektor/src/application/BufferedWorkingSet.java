@@ -15,7 +15,7 @@ public class BufferedWorkingSet {
 
 	private static final int BUFFER_SIZE_DEFAULT = 5;
 	private static final int MAX_IMAGES_IN_RAM = 15;
-	private static final int PREVIEW_SIZE = 120;
+	private static final int PREVIEW_SIZE = 200;
 	private static final boolean PREVIEW_SCALE_ON_WIDTH = false;
 
 	private ArrayList<String> index_base = new ArrayList<String>();
@@ -76,7 +76,7 @@ public class BufferedWorkingSet {
 		for (String s : orderedNameList)
 			ws.getIndex_base().add(0, s);
 
-		ws.setInfo(WorkingSetInfo.gen(ws.getPreviews().get(0).getImage(), files.size()));
+		ws.setInfo(WorkingSetInfo.gen(ws.getPreviews().get(0).getImage(), files.size(), files.size()));
 		ws.kickOffUpdateLoop();
 		files = null;
 		return ws;
@@ -103,6 +103,7 @@ public class BufferedWorkingSet {
 
 				ws.getPreviews().add(new SignedImage(trashFile.getName(), genPreview(trashFile)));
 				ws.getIndex_trash().add(trashFile.getName());
+				Main.loadProgress += Main.progressPerImage;
 
 			}
 		if (new File(dir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_SEEN).listFiles() != null) // Bilder
@@ -115,6 +116,7 @@ public class BufferedWorkingSet {
 				}
 				ws.getPreviews().add(new SignedImage(oldFile.getName(), genPreview(oldFile)));
 				ws.getIndex_base_keep().add(oldFile.getName());
+				Main.loadProgress += Main.progressPerImage;
 
 			}
 		if (new File(dir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_NEW).listFiles() != null) // Bilder
@@ -127,6 +129,7 @@ public class BufferedWorkingSet {
 				}
 				ws.getPreviews().add(new SignedImage(newFile.getName(), genPreview(newFile)));
 				ws.getIndex_base().add(newFile.getName());
+				Main.loadProgress += Main.progressPerImage;
 
 			}
 		if (new File(dir.getAbsolutePath() + FileManager.REL_PATH_COPY).listFiles() != null) // Bilder vorhanden?
@@ -138,6 +141,7 @@ public class BufferedWorkingSet {
 				}
 				ws.getPreviews().add(new SignedImage(copyFile.getName(), genPreview(copyFile)));
 				ws.getIndex_copy().add(copyFile.getName());
+				Main.loadProgress += Main.progressPerImage;
 
 			}
 
@@ -328,7 +332,7 @@ public class BufferedWorkingSet {
 		if (buffer_base.containsKey(name)) {
 
 			// Bild bereits reingeladen
-			index_base.remove(name); // aus index unseen entfernen
+			index_base.remove(0); // aus index unseen entfernen
 			SignedImage res = buffer_base.get(name); // aus buffer nehmen
 			buffer_base.remove(name);
 			currentBufferSize--;
@@ -345,7 +349,7 @@ public class BufferedWorkingSet {
 				} catch (InterruptedException e) {
 				}
 
-			index_base.remove(name); // aus index unseen entfernen
+			index_base.remove(0); // aus index unseen entfernen
 			SignedImage res = buffer_base.get(name); // aus buffer nehmen
 			buffer_base.remove(name);
 			currentBufferSize--;
