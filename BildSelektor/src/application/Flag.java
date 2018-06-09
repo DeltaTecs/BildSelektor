@@ -1,8 +1,15 @@
 package application;
 
 public class Flag {
-	
+
 	private boolean active;
+
+	public Flag() {
+	}
+
+	public Flag(boolean active) {
+		this.active = active;
+	}
 
 	public boolean isActive() {
 		return active;
@@ -11,20 +18,17 @@ public class Flag {
 	public void setActive(boolean active) {
 		this.active = active;
 	}
-	
+
 	public static Flag active() {
 		Flag f = new Flag();
 		f.setActive(true);
 		return f;
 	}
-	
+
 	public static Flag inactive() {
 		Flag f = new Flag();
 		f.setActive(false);
 		return f;
 	}
-	
-	
-	
 
 }

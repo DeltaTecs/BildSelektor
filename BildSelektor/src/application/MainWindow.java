@@ -9,7 +9,6 @@ import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -62,6 +61,19 @@ public class MainWindow {
 	public static Image img_import;
 	public static Image img_export;
 	public static Image img_loadFromFloppydisk;
+	public static Image img_addFloppydisk;
+	public static Image img_overrideFloppydisk;
+	public static Image img_returnarrow;
+	public static Image img_folder_search;
+	public static Image img_folder_desktop;
+	public static Image img_folder_images;
+	public static Image img_usbstick;
+	public static Image img_handy;
+	public static Image icon;
+
+
+	
+	public static String global_style = ""; 
 
 	private Stage stage;
 	private Scene scene;
@@ -86,7 +98,7 @@ public class MainWindow {
 	private CheckBox checkOriginalDelete;
 	private CheckBox checkCopySave;
 	private Button buttonCut;
-	private OverrideSetPane savesetPane = new OverrideSetPane();
+	private SaveSetPane savesetPane = new SaveSetPane(this);
 
 	private BufferedWorkingSet workingSet;
 	private SignedImage currentImage = null;
@@ -101,6 +113,7 @@ public class MainWindow {
 	public MainWindow(Stage stage, BufferedWorkingSet workingSet) {
 		// init, layout und canvases
 		this.stage = stage;
+		stage.getIcons().add(MainWindow.icon);
 		this.workingSet = workingSet;
 		currentImage = workingSet.getNextUnseen();
 		layout_root = new BorderPane();
@@ -410,7 +423,19 @@ public class MainWindow {
 			}
 		});
 
-		Button buttonAbort = new Button("Abbrechen", getImageView(img_red_x, 30, 30));
+		final MainWindow mw = this;
+		buttonFinish.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				FinishSetPane finishPane = new FinishSetPane(workingSet, mw);
+				setView(finishPane.getLayout_root());
+				stage.setMaximized(!stage.isMaximized());
+				stage.setMaximized(!stage.isMaximized());
+			}
+		});
+
+		Button buttonAbort = new Button("Zurück", getImageView(img_returnarrow, 30, 30));
 		buttonAbort.setPrefHeight(40);
 		buttonAbort.setPadding(new Insets(10, 48, 10, 12));
 		GridPane.setMargin(buttonAbort, new Insets(40, 0, 0, 10));
@@ -427,20 +452,18 @@ public class MainWindow {
 
 	private void openExitPanel() {
 		layout_root.setLeft(layout_left_exit);
-		if (currentImage != null)
-			workingSet.addUnSeen(currentImage);
 		storeImage = currentImage;
 		currentImage = null;
 		canvasShowcase.draw();
+		workingSet.setAddImage(storeImage);
 	}
 
 	private void closeExitPanel() {
-		resetViewfocus();
+		resetView();
 		layout_root.setLeft(layout_left_basis);
 		currentImage = storeImage;
 		canvasShowcase.draw();
-		if (storeImage != null)
-			workingSet.removeUnSeen(storeImage);
+		workingSet.setAddImage(null);
 	}
 
 	private void initOptionsPanel() {
@@ -956,7 +979,7 @@ public class MainWindow {
 		this.stage.getScene().setRoot(b);
 	}
 
-	public void resetViewfocus() {
+	public void resetView() {
 		this.stage.getScene().setRoot(this.layout_root);
 	}
 
@@ -965,6 +988,14 @@ public class MainWindow {
 		for (String s : c)
 			a.add(0, s);
 		return a;
+	}
+
+	public BufferedWorkingSet getWorkingSet() {
+		return workingSet;
+	}
+
+	public Stage getStage() {
+		return stage;
 	}
 
 }

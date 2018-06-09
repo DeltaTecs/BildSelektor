@@ -20,13 +20,14 @@ public class Main extends Application {
 	private MainWindow mainWindow;
 	private ProgressWindow progressWindow;
 	private BufferedWorkingSet workingSet = null;
+	private Stage primary = null;
 
 	@Override
 	public void start(Stage primaryStage) {
 		currentInstance = this;
-		this.loadImages();
+		this.loadResources();
 		new StartupWindow().show();
-
+		primary = primaryStage;
 	}
 
 	public static void main(String[] args) {
@@ -50,7 +51,7 @@ public class Main extends Application {
 			}
 			progressPerImage = 0.94 / files.size();
 
-			progressWindow = new ProgressWindow("Programm lädt", "Bilder werden geladen...", false);
+			progressWindow = new ProgressWindow("Programm lädt", "Bilder werden geladen...", false, null);
 			progressWindow.show();
 
 			// Tatsächlich laden
@@ -102,7 +103,7 @@ public class Main extends Application {
 		Stage primaryStage = new Stage();
 		try {
 
-			progressWindow = new ProgressWindow("Programm lädt", "Bilder werden geladen...", false);
+			progressWindow = new ProgressWindow("Programm lädt", "Bilder werden geladen...", false, null);
 			progressWindow.show();
 
 			// Tatsächlich laden
@@ -110,7 +111,6 @@ public class Main extends Application {
 
 				@Override
 				public void run() {
-					String path = PATH + FileManager.REL_PATH_WORKINGSETS + "\\" + info.getHeader();
 					int imagesNew = new File(PATH + FileManager.REL_PATH_WORKINGSETS + "\\" + info.getHeader()
 							+ FileManager.REL_PATH_ORIGINAL_NEW).listFiles().length;
 					int imagesOld = new File(PATH + FileManager.REL_PATH_WORKINGSETS + "\\" + info.getHeader()
@@ -157,8 +157,10 @@ public class Main extends Application {
 		}
 	}
 	
-	public void loadImages() {
+	public void loadResources() {
+		MainWindow.global_style = getClass().getResource("application.css").toExternalForm();
 		try {
+			MainWindow.icon = new Image(this.getClass().getResource("icon.png").toString());
 			MainWindow.img_box_foreground = new Image(this.getClass().getResource("box_foreground.png").toString());
 			MainWindow.img_box_background = new Image(this.getClass().getResource("box.png").toString());
 			MainWindow.img_trash_foreground = new Image(this.getClass().getResource("trash_foreground.png").toString());
@@ -172,6 +174,14 @@ public class Main extends Application {
 			MainWindow.img_import = new Image(this.getClass().getResource("import.png").toString());
 			MainWindow.img_export = new Image(this.getClass().getResource("export.png").toString());
 			MainWindow.img_loadFromFloppydisk = new Image(this.getClass().getResource("loadFloppyDisk.png").toString());
+			MainWindow.img_overrideFloppydisk = new Image(this.getClass().getResource("overrideFloppydisk.png").toString());
+			MainWindow.img_addFloppydisk = new Image(this.getClass().getResource("loadFloppyDisk.png").toString());
+			MainWindow.img_returnarrow = new Image(this.getClass().getResource("returnarrow.png").toString());
+			MainWindow.img_folder_search = new Image(this.getClass().getResource("folder_search.png").toString());
+			MainWindow.img_folder_images = new Image(this.getClass().getResource("folder_images.png").toString());
+			MainWindow.img_folder_desktop = new Image(this.getClass().getResource("folder_desktop.png").toString());
+			MainWindow.img_usbstick = new Image(this.getClass().getResource("usbstick.png").toString());
+			MainWindow.img_handy = new Image(this.getClass().getResource("handy.png").toString());
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err.println("Bild laden für ui gescheitert. Exit.");
@@ -179,4 +189,9 @@ public class Main extends Application {
 			return;
 		}
 	}
+
+	public Stage getPrimaryStage() {
+		return primary;
+	}
+	
 }

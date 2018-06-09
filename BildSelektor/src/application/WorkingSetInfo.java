@@ -42,6 +42,7 @@ public class WorkingSetInfo {
 		return new WorkingSetInfo(t, FileManager.rescale(thump, 120, true), System.currentTimeMillis(), h, startSize,
 				unseen);
 	}
+	
 
 	public String getTitle() {
 		return title;

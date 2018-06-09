@@ -35,6 +35,7 @@ public class BufferedWorkingSet {
 	private int currentBufferSize = 0;
 	private int runningCopyTasks = 0;
 	private int imagesInRAM = 0;
+	private SignedImage addImage = null;
 
 	public BufferedWorkingSet(boolean first, File source) {
 		super();
@@ -90,7 +91,6 @@ public class BufferedWorkingSet {
 		clearTemp();
 
 		// Dateien werden vor Ort belassen
-		// -> Zugeschnittene werden dennoch in TEMP_COPY abgelegt
 
 		// Alle abgehen und eintragen
 		if (new File(dir.getAbsolutePath() + FileManager.REL_PATH_TRASH).listFiles() != null) // Bilder vorhanden?
@@ -100,9 +100,10 @@ public class BufferedWorkingSet {
 					System.err.println("Error loading trash images. Found dir or non existing file");
 					continue; //
 				}
+				if (trashFile.getName().equals(FileManager.NAME_INFO_ORDER))
+					continue;
 
 				ws.getPreviews().add(new SignedImage(trashFile.getName(), genPreview(trashFile)));
-				ws.getIndex_trash().add(trashFile.getName());
 				Main.loadProgress += Main.progressPerImage;
 
 			}
@@ -114,8 +115,10 @@ public class BufferedWorkingSet {
 					System.err.println("Error loading seen images. Found dir or non existing file");
 					continue; //
 				}
+				if (oldFile.getName().equals(FileManager.NAME_INFO_ORDER))
+					continue;
+
 				ws.getPreviews().add(new SignedImage(oldFile.getName(), genPreview(oldFile)));
-				ws.getIndex_base_keep().add(oldFile.getName());
 				Main.loadProgress += Main.progressPerImage;
 
 			}
@@ -127,8 +130,10 @@ public class BufferedWorkingSet {
 					System.err.println("Error loading unseen images. Found dir or non existing file");
 					continue; //
 				}
+				if (newFile.getName().equals(FileManager.NAME_INFO_ORDER))
+					continue;
+
 				ws.getPreviews().add(new SignedImage(newFile.getName(), genPreview(newFile)));
-				ws.getIndex_base().add(newFile.getName());
 				Main.loadProgress += Main.progressPerImage;
 
 			}
@@ -139,11 +144,18 @@ public class BufferedWorkingSet {
 					System.err.println("Error loading copy images. Found dir or non existing file");
 					continue; //
 				}
-				ws.getPreviews().add(new SignedImage(copyFile.getName(), genPreview(copyFile)));
-				ws.getIndex_copy().add(copyFile.getName());
-				Main.loadProgress += Main.progressPerImage;
+				if (copyFile.getName().equals(FileManager.NAME_INFO_ORDER))
+					continue;
 
+				ws.getPreviews().add(new SignedImage(copyFile.getName(), genPreview(copyFile)));
+				Main.loadProgress += Main.progressPerImage;
 			}
+
+		ws.getIndex_base().addAll(FileManager.readOrder(dir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_NEW));
+		ws.getIndex_base_keep()
+				.addAll(FileManager.readOrder(dir.getAbsolutePath() + FileManager.REL_PATH_ORIGINAL_SEEN));
+		ws.getIndex_trash().addAll(FileManager.readOrder(dir.getAbsolutePath() + FileManager.REL_PATH_TRASH));
+		ws.getIndex_copy().addAll(FileManager.readOrder(dir.getAbsolutePath() + FileManager.REL_PATH_COPY));
 
 		ws.setInfo(FileManager.parseWorkingSetInfo(dir));
 		ws.kickOffUpdateLoop();
@@ -524,7 +536,7 @@ public class BufferedWorkingSet {
 		for (String s : index_copy)
 			if (s.equals(mirror))
 				return s;
-		return null;
+		return mirror;
 	}
 
 	public int getRunningCopyTasks() {
@@ -537,6 +549,14 @@ public class BufferedWorkingSet {
 
 	private void setImageInRAM(int i) {
 		imagesInRAM = i;
+	}
+
+	public SignedImage getAddImage() {
+		return addImage;
+	}
+
+	public void setAddImage(SignedImage addImage) {
+		this.addImage = addImage;
 	}
 
 }
