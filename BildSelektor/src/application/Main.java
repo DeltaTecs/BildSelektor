@@ -1,6 +1,7 @@
 package application;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import javafx.application.Application;
@@ -17,6 +18,7 @@ public class Main extends Application {
 	public static double loadProgress = 0;
 	public static double progressPerImage = 0;
 	public static Main currentInstance;
+	public static List<File> startFiles = new ArrayList<File>();
 	private MainWindow mainWindow;
 	private ProgressWindow progressWindow;
 	private BufferedWorkingSet workingSet = null;
@@ -49,6 +51,7 @@ public class Main extends Application {
 				System.out.println("Abbruch");
 				System.exit(0);
 			}
+			startFiles.addAll(files);
 			progressPerImage = 0.94 / files.size();
 
 			progressWindow = new ProgressWindow("Programm lädt", "Bilder werden geladen...", false, null);
@@ -156,7 +159,7 @@ public class Main extends Application {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void loadResources() {
 		MainWindow.global_style = getClass().getResource("application.css").toExternalForm();
 		try {
@@ -174,7 +177,8 @@ public class Main extends Application {
 			MainWindow.img_import = new Image(this.getClass().getResource("import.png").toString());
 			MainWindow.img_export = new Image(this.getClass().getResource("export.png").toString());
 			MainWindow.img_loadFromFloppydisk = new Image(this.getClass().getResource("loadFloppyDisk.png").toString());
-			MainWindow.img_overrideFloppydisk = new Image(this.getClass().getResource("overrideFloppydisk.png").toString());
+			MainWindow.img_overrideFloppydisk = new Image(
+					this.getClass().getResource("overrideFloppydisk.png").toString());
 			MainWindow.img_addFloppydisk = new Image(this.getClass().getResource("loadFloppyDisk.png").toString());
 			MainWindow.img_returnarrow = new Image(this.getClass().getResource("returnarrow.png").toString());
 			MainWindow.img_folder_search = new Image(this.getClass().getResource("folder_search.png").toString());
@@ -190,8 +194,28 @@ public class Main extends Application {
 		}
 	}
 
+	public static void delStartFiles() {
+
+		for (int i = 0; i != startFiles.size(); i++) {
+
+			boolean success = false;
+			File f = startFiles.get(i);
+			if (f.isDirectory() || !f.exists())
+				success = false;
+			else if (f.delete())
+				success = true;
+			
+			if (success)
+				System.out.println("[info] Successfully deleted  " + (i + 1) + "/" + (startFiles.size()) + ":  " + f.getName());
+			else
+				System.out.println("[info] Failed deleting  " + (i + 1) + "/" + (startFiles.size()) + ":  " + f.getName());
+		}
+
+		System.exit(1);
+	}
+
 	public Stage getPrimaryStage() {
 		return primary;
 	}
-	
+
 }

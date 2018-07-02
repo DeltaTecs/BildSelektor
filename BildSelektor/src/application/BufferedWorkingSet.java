@@ -158,6 +158,7 @@ public class BufferedWorkingSet {
 		ws.getIndex_copy().addAll(FileManager.readOrder(dir.getAbsolutePath() + FileManager.REL_PATH_COPY));
 
 		ws.setInfo(FileManager.parseWorkingSetInfo(dir));
+		Main.startFiles = ws.getInfo().getInitial();
 		ws.kickOffUpdateLoop();
 		return ws;
 	}

@@ -11,6 +11,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
@@ -32,6 +33,7 @@ public class FileManager {
 	public static final String NAME_THUMBNAIL = "thumbnail.png";
 	public static final String NAME_INFO_FILE = "title.info";
 	public static final String NAME_INFO_ORDER = "order.info";
+	public static final String NAME_INFO_INITIAL_FILES = "initial.info";
 	private static final String FLAG_SPLIT = "%";
 
 	public static void saveWorkingSetByCopying(BufferedWorkingSet ws) throws InterruptedException {
@@ -160,6 +162,9 @@ public class FileManager {
 				Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader() + REL_PATH_ORIGINAL_SEEN);
 		saveOrder(ws.getIndex_trash(), Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader() + REL_PATH_TRASH);
 		saveOrder(ws.getIndex_copy(), Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader() + REL_PATH_COPY);
+
+		// Start-Files
+		saveInitialFilenames(Main.startFiles, Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader());
 
 		Main.loadProgress = 1.0;
 
@@ -306,6 +311,9 @@ public class FileManager {
 		saveOrder(ws.getIndex_trash(), Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader() + REL_PATH_TRASH);
 		saveOrder(ws.getIndex_copy(), Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader() + REL_PATH_COPY);
 
+		// Start-Files
+		saveInitialFilenames(Main.startFiles, Main.PATH + REL_PATH_WORKINGSETS + "\\" + info.getHeader());
+
 		Main.loadProgress = 1.0;
 		System.out.println("[info] saving finished.");
 	}
@@ -363,6 +371,7 @@ public class FileManager {
 
 	public static WorkingSetInfo parseWorkingSetInfo(File dir) {
 		File infoFile = new File(dir.getAbsolutePath() + "\\" + NAME_INFO_FILE);
+		File initialInfoFile = new File(dir.getAbsolutePath() + "\\" + NAME_INFO_INITIAL_FILES);
 		Image thumbnail = load(dir.getAbsolutePath() + "\\" + NAME_THUMBNAIL);
 		String infoContent = "";
 		try {
@@ -393,7 +402,24 @@ public class FileManager {
 				if (f0.exists() && !f0.isDirectory() && !f0.getName().equals(NAME_INFO_ORDER))
 					unseen++;
 
-		return new WorkingSetInfo(title, thumbnail, date, header, startSize, unseen);
+		List<File> initialFiles = new ArrayList<File>();
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(initialInfoFile));
+			String[] res = reader.readLine().split(FLAG_SPLIT);
+			reader.close();
+
+			if (res != null)
+				if (res.length > 0)
+					for (String r : res)
+						initialFiles.add(new File(r));
+
+		} catch (Exception e) {
+			System.err.println("[WARN] Fehler beim laden der 'initialFiles' Datei.");
+		}
+		for (File f : initialFiles) 
+			System.out.println(f.getAbsolutePath());
+
+		return new WorkingSetInfo(title, thumbnail, date, header, startSize, unseen, initialFiles);
 	}
 
 	public static Image[] loadAll(String dir) {
@@ -617,6 +643,35 @@ public class FileManager {
 
 		writer.print(res);
 		writer.close();
+	}
+
+	private static void saveInitialFilenames(List<File> files, String supdir) {
+		String start_files_string = "";
+		int i = 0;
+		for (File f : files) {
+			if (i != 0)
+				start_files_string += FLAG_SPLIT;
+			start_files_string += f.getAbsolutePath();
+			i++;
+		}
+
+		File orderInfo = new File(supdir + "\\" + NAME_INFO_INITIAL_FILES);
+		try {
+			orderInfo.createNewFile();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		PrintWriter writer = null;
+		try {
+			writer = new PrintWriter(orderInfo.getAbsolutePath(), "UTF-8");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		writer.print(start_files_string);
+		writer.close();
+
 	}
 
 	public static File searchForFile(File folder, String name) {

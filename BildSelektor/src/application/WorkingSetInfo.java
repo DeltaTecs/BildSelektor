@@ -1,7 +1,9 @@
 package application;
 
+import java.io.File;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
 import javafx.scene.image.Image;
 
@@ -16,8 +18,10 @@ public class WorkingSetInfo {
 	private long date;
 	private int startSize;
 	private int unseen;
+	private List<File> initial;
 
-	public WorkingSetInfo(String title, Image image, long date, String header, int startSize, int unseen) {
+	public WorkingSetInfo(String title, Image image, long date, String header, int startSize, int unseen,
+			List<File> initial) {
 		super();
 		this.title = title;
 		this.thumbnail = image;
@@ -25,6 +29,7 @@ public class WorkingSetInfo {
 		this.header = header;
 		this.startSize = startSize;
 		this.unseen = unseen;
+		this.initial = initial;
 	}
 
 	public static WorkingSetInfo gen(Image thump, int startSize, int unseen) {
@@ -40,9 +45,8 @@ public class WorkingSetInfo {
 		String h = year + "---" + month_index + "_" + month + "---" + day + "___"
 				+ (System.currentTimeMillis() % 1000000);
 		return new WorkingSetInfo(t, FileManager.rescale(thump, 120, true), System.currentTimeMillis(), h, startSize,
-				unseen);
+				unseen, Main.startFiles);
 	}
-	
 
 	public String getTitle() {
 		return title;
@@ -59,15 +63,15 @@ public class WorkingSetInfo {
 	public long getDate() {
 		return date;
 	}
-	
+
 	public int getSecondDifferenceToNow() {
 		return (int) ((System.currentTimeMillis() - date) / (long) (1000));
 	}
-	
+
 	public int getMinuteDifferenceToNow() {
 		return (int) ((System.currentTimeMillis() - date) / (long) (1000 * 60));
 	}
-	
+
 	public int getHourDifferenceToNow() {
 		return (int) ((System.currentTimeMillis() - date) / (long) (1000 * 60 * 60));
 	}
@@ -91,5 +95,10 @@ public class WorkingSetInfo {
 	public int getUnseen() {
 		return unseen;
 	}
+
+	public List<File> getInitial() {
+		return initial;
+	}
+	
 
 }

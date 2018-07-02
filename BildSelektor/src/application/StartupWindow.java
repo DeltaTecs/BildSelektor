@@ -344,9 +344,10 @@ public class StartupWindow extends Stage {
 			System.out.println("Abbruch");
 			System.exit(0);
 		}
+		Main.startFiles.addAll(images);
 		Main.progressPerImage = 0.94 / images.size();
 		Main.loadProgress = 0;
-
+		
 		ProgressWindow[] progressWindow = new ProgressWindow[] { null };
 		Platform.runLater(new Runnable() {
 

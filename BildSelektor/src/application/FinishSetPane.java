@@ -115,10 +115,12 @@ public class FinishSetPane {
 			state[0] = 2;
 			toremove.set(1, initCopyList(ws.getIndex_copy(), layoutPreviews, workingSet));
 			labelHeadline.setText("Diese Kopien werden angefertigt");
+			scrollPreviews.setHvalue(0);
 		} else if (ws.getIndex_trash().size() > 0) {
 			state[0] = 3;
 			toremove.set(2, initTrashList(ws.getIndex_trash(), layoutPreviews, workingSet));
 			labelHeadline.setText("Diese Bilder werden gelöscht");
+			scrollPreviews.setHvalue(0);
 		} else {
 			state[0] = 4;
 			// Speicher Ort auswählen
@@ -135,6 +137,7 @@ public class FinishSetPane {
 					if (ws.getIndex_copy().size() > 0) {
 						toremove.set(1, initCopyList(ws.getIndex_copy(), layoutPreviews, workingSet));
 						labelHeadline.setText("Diese Kopien werden angefertigt");
+						scrollPreviews.setHvalue(0);
 					} else if (ws.getIndex_trash().size() + toremove.get(0).size() + toremove.get(1).size() > 0) {
 						state[0] = 3;
 						ArrayList<String> alltoremove = new ArrayList<String>(ws.getIndex_trash());
@@ -142,6 +145,7 @@ public class FinishSetPane {
 						alltoremove.addAll(toremove.get(1));
 						toremove.set(2, initTrashList(alltoremove, layoutPreviews, workingSet));
 						labelHeadline.setText("Diese Bilder werden gelöscht");
+						scrollPreviews.setHvalue(0);
 					} else {
 						state[0] = 4;
 						// Speicher Ort auswählen
@@ -156,6 +160,7 @@ public class FinishSetPane {
 						alltoremove.addAll(toremove.get(1));
 						toremove.set(2, initTrashList(alltoremove, layoutPreviews, workingSet));
 						labelHeadline.setText("Diese Bilder werden gelöscht");
+						scrollPreviews.setHvalue(0);
 					} else {
 						// Speicher Ort auswählen
 						applySavingPane(toremove, mainWindow);
@@ -485,7 +490,7 @@ public class FinishSetPane {
 		System.out.println("[info] Saved all Images in " + ((System.currentTimeMillis() - st) / 1000) + " sec.  "
 				+ failed + "/" + (finalCopys.size() + finalOriginals.size()) + " failed.");
 
-		mw.getStage().close();
+		Platform.runLater(() -> mw.getStage().close());
 
 		if (ws.getSourceDir() != BufferedWorkingSet.FOLDER_TEMP)
 			FileManager.delDir(ws.getSourceDir()); // WorkingSet Entfernen da jetzt lückenhaft.
@@ -507,14 +512,41 @@ public class FinishSetPane {
 				stage.setResizable(false);
 				stage.setScene(scene);
 				scene.getStylesheets().add(MainWindow.global_style);
-
 				Label headline = new Label("Speichern abgeschlossen");
 				headline.setPadding(new Insets(10));
-				Button button = new Button("OK");
+				Button buttonOk = new Button("OK");
+				Button buttonNo = new Button("Nein");
+				HBox layoutButtons = new HBox();
+				layoutButtons.setAlignment(Pos.CENTER);
+				layoutButtons.setSpacing(10);
+				buttonOk.setPadding(new Insets(10, 20, 10, 20));
+				buttonNo.setPadding(new Insets(10, 20, 10, 20));
+				layoutButtons.getChildren().add(buttonOk);
+				
+				Runnable r_ok_pressed = new Runnable() {
+					
+					@Override
+					public void run() {
+						
+						headline.setText("Ursprungsdateien löschen?");
+						layoutButtons.getChildren().add(buttonNo);
+						buttonOk.setText("Ja");
+						buttonNo.setOnAction(e -> System.exit(1));
+						buttonOk.setOnAction(new EventHandler<ActionEvent>() {
+							
+							@Override
+							public void handle(ActionEvent event) {
+								stage.close();
+								Main.delStartFiles();
+							}
+						});
+					}
+				};
+
 				layout_root.setSpacing(10);
-				layout_root.getChildren().addAll(headline, button);
+				layout_root.getChildren().addAll(headline, layoutButtons);
 				layout_root.setAlignment(Pos.CENTER);
-				button.setOnAction(e -> System.exit(1));
+				buttonOk.setOnAction(e -> Platform.runLater(r_ok_pressed));
 				stage.setOnCloseRequest(e -> System.exit(1));
 
 				stage.show();
