@@ -286,24 +286,9 @@ public class StartupWindow extends Stage {
 
 				if (dir == USBSelector.FILE_NONE)
 					return;
-
-				List<File> images = new ArrayList<File>();
-				for (File f : dir.listFiles()) {
-					if (f.isDirectory() || !f.exists())
-						continue;
-					String[] split = f.getName().split("\\.");
-					if (split.length < 2)
-						continue;
-					if (split[split.length - 1].equalsIgnoreCase("jpg")
-							|| split[split.length - 1].equalsIgnoreCase("png")
-							|| split[split.length - 1].equalsIgnoreCase("jpeg")
-							|| split[split.length - 1].equalsIgnoreCase("gif")) {
-						images.add(f);
-
-					}
-				}
-
-				if (images.size() == 0) {
+				
+				dir = getDirWithImages(dir);
+				if (dir == null){
 					Platform.runLater(new Runnable() {
 
 						@Override
@@ -313,7 +298,7 @@ public class StartupWindow extends Stage {
 							BorderPane layoutRoot = new BorderPane();
 							Scene scene = new Scene(layoutRoot, 400, 200);
 							scene.getStylesheets().add(MainWindow.global_style);
-							Label label = new Label("Direkt auf dem Medium wurden\nkeine Bilder gefunden.");
+							Label label = new Label("Auf dem Medium wurden\nkeine Bilder gefunden.");
 							Button button = new Button("OK");
 							label.setAlignment(Pos.CENTER);
 							BorderPane.setAlignment(button, Pos.BOTTOM_CENTER);
@@ -329,6 +314,22 @@ public class StartupWindow extends Stage {
 						}
 					});
 					return;
+				}
+
+				List<File> images = new ArrayList<File>();
+				for (File f : dir.listFiles()) {
+					if (f.isDirectory() || !f.exists())
+						continue;
+					String[] split = f.getName().split("\\.");
+					if (split.length < 2)
+						continue;
+					if (split[split.length - 1].equalsIgnoreCase("jpg")
+							|| split[split.length - 1].equalsIgnoreCase("png")
+							|| split[split.length - 1].equalsIgnoreCase("jpeg")
+							|| split[split.length - 1].equalsIgnoreCase("gif")) {
+						images.add(f);
+
+					}
 				}
 
 				Platform.runLater(() -> s0.close());
@@ -400,6 +401,61 @@ public class StartupWindow extends Stage {
 			}
 		}, "prog-window-update").start();
 		// ---- Laden ende ------
+	}
+	
+	private static File getDirWithImages(File start) {
+		
+		
+		List<File> subdirs = new ArrayList<File>();
+		
+		for (File f : start.listFiles()) {
+			
+			if (!f.exists())
+				continue;
+			
+			if (f.isDirectory()) {
+				subdirs.add(f);
+				continue;
+			}
+			
+			
+			// Namen analysieren
+			String[] split = f.getName().split("\\.");
+			if (split.length < 2)
+				continue;
+			if (split[split.length - 1].equalsIgnoreCase("jpg")
+					|| split[split.length - 1].equalsIgnoreCase("png")
+					|| split[split.length - 1].equalsIgnoreCase("jpeg")
+					|| split[split.length - 1].equalsIgnoreCase("gif")) {
+				return start;
+
+			}
+		}
+		
+		for (File subdir : subdirs) {
+			File res = getDirWithImages(subdir);
+			if (res == null)
+				continue;
+			else
+				return res;
+		}
+		
+		return null;
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 	}
 
 }
