@@ -19,7 +19,6 @@ public class Main extends Application {
 	public static double progressPerImage = 0;
 	public static Main currentInstance;
 	public static List<File> startFiles = new ArrayList<File>();
-	private MainWindow mainWindow;
 	private ProgressWindow progressWindow;
 	private BufferedWorkingSet workingSet = null;
 	private Stage primary = null;
@@ -89,7 +88,7 @@ public class Main extends Application {
 					Platform.runLater(new Runnable() {
 						@Override
 						public void run() {
-							mainWindow = new MainWindow(primaryStage, workingSet);
+							new MainWindow(primaryStage, workingSet);
 							progressWindow.close();
 						}
 					});
@@ -147,7 +146,7 @@ public class Main extends Application {
 					Platform.runLater(new Runnable() {
 						@Override
 						public void run() {
-							mainWindow = new MainWindow(primaryStage, workingSet);
+							new MainWindow(primaryStage, workingSet);
 							progressWindow.close();
 						}
 					});
