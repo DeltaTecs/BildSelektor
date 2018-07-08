@@ -70,8 +70,6 @@ public class MainWindow {
 	public static Image img_usbstick;
 	public static Image img_handy;
 	public static Image icon;
-
-
 	
 	public static String global_style = ""; 
 
@@ -130,10 +128,8 @@ public class MainWindow {
 			@Override
 			public void handle(WindowEvent t) {
 
-				// ### DEBUG. Sonst "wirklich schlieﬂen?"
-
-				Platform.exit();
-				System.exit(0);
+				ExitPrompt.showPrompt();
+				t.consume();
 			}
 		});
 

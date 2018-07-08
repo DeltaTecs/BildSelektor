@@ -32,6 +32,7 @@ public class ProgressWindow extends Stage {
 		this.diagnostic = diagnostic;
 		this.notificationTask = notTask;
 		this.getIcons().add(MainWindow.icon);
+		this.setOnCloseRequest(e -> System.exit(0));
 
 		GridPane grid = new GridPane();
 		grid.setPadding(new Insets(60, 30, 0, 30));
