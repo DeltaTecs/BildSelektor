@@ -3,7 +3,6 @@ package application;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;

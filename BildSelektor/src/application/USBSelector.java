@@ -1,17 +1,12 @@
 package application;
 
+import java.awt.Button;
+import java.awt.Insets;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public abstract class USBSelector {
