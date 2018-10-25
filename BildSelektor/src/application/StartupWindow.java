@@ -70,7 +70,7 @@ public class StartupWindow extends Stage {
 		layoutLowest.getChildren().add(buttonGrid);
 		layout_root.setCenter(layoutLowest);
 
-		boolean worksetsAvailable = (new File(Main.PATH + FileManager.REL_PATH_WORKINGSETS).listFiles().length > 0);
+		boolean worksetsAvailable = new File(Main.PATH + FileManager.REL_PATH_WORKINGSETS).listFiles() != null;
 		buttonLoadExisting.setDisable(!worksetsAvailable);
 
 		this.setScene(scene);
@@ -176,7 +176,7 @@ public class StartupWindow extends Stage {
 
 				if (dir == USBSelector.FILE_NONE)
 					return;
-				
+
 				dir = new File(dir.getAbsolutePath() + "\\DCIM\\Camera");
 				if (!dir.exists()) {
 					Platform.runLater(new Runnable() {
@@ -257,7 +257,7 @@ public class StartupWindow extends Stage {
 		}).start();
 
 	}
-	
+
 	private void openFromStick() {
 
 		Stage s0 = this;
@@ -286,9 +286,9 @@ public class StartupWindow extends Stage {
 
 				if (dir == USBSelector.FILE_NONE)
 					return;
-				
+
 				dir = getDirWithImages(dir);
-				if (dir == null){
+				if (dir == null) {
 					Platform.runLater(new Runnable() {
 
 						@Override
@@ -348,7 +348,7 @@ public class StartupWindow extends Stage {
 		Main.startFiles.addAll(images);
 		Main.progressPerImage = 0.94 / images.size();
 		Main.loadProgress = 0;
-		
+
 		ProgressWindow[] progressWindow = new ProgressWindow[] { null };
 		Platform.runLater(new Runnable() {
 
@@ -402,36 +402,33 @@ public class StartupWindow extends Stage {
 		}, "prog-window-update").start();
 		// ---- Laden ende ------
 	}
-	
+
 	private static File getDirWithImages(File start) {
-		
-		
+
 		List<File> subdirs = new ArrayList<File>();
-		
+
 		for (File f : start.listFiles()) {
-			
+
 			if (!f.exists())
 				continue;
-			
+
 			if (f.isDirectory()) {
 				subdirs.add(f);
 				continue;
 			}
-			
-			
+
 			// Namen analysieren
 			String[] split = f.getName().split("\\.");
 			if (split.length < 2)
 				continue;
-			if (split[split.length - 1].equalsIgnoreCase("jpg")
-					|| split[split.length - 1].equalsIgnoreCase("png")
+			if (split[split.length - 1].equalsIgnoreCase("jpg") || split[split.length - 1].equalsIgnoreCase("png")
 					|| split[split.length - 1].equalsIgnoreCase("jpeg")
 					|| split[split.length - 1].equalsIgnoreCase("gif")) {
 				return start;
 
 			}
 		}
-		
+
 		for (File subdir : subdirs) {
 			File res = getDirWithImages(subdir);
 			if (res == null)
@@ -439,23 +436,9 @@ public class StartupWindow extends Stage {
 			else
 				return res;
 		}
-		
+
 		return null;
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+
 	}
 
 }
