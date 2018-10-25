@@ -3,6 +3,7 @@ package application;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
@@ -69,8 +70,8 @@ public class MainWindow {
 	public static Image img_usbstick;
 	public static Image img_handy;
 	public static Image icon;
-	
-	public static String global_style = ""; 
+
+	public static String global_style = "";
 
 	private Stage stage;
 	private Scene scene;

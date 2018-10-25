@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -202,11 +203,13 @@ public class Main extends Application {
 				success = false;
 			else if (f.delete())
 				success = true;
-			
+
 			if (success)
-				System.out.println("[info] Successfully deleted  " + (i + 1) + "/" + (startFiles.size()) + ":  " + f.getName());
+				System.out.println(
+						"[info] Successfully deleted  " + (i + 1) + "/" + (startFiles.size()) + ":  " + f.getName());
 			else
-				System.out.println("[info] Failed deleting  " + (i + 1) + "/" + (startFiles.size()) + ":  " + f.getName());
+				System.out.println(
+						"[info] Failed deleting  " + (i + 1) + "/" + (startFiles.size()) + ":  " + f.getName());
 		}
 
 		System.exit(1);
