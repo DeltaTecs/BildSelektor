@@ -47,6 +47,7 @@ public class MainWindow {
 	private static final int MIN_CUT_SIZE = 70;
 	private static final double GRIP_HEIGHT = 30;
 	private static final double GRIP_LENGTH = 60;
+	private static final double FOTO_HEIGH_TO_WIDTH = 9.0 / 13.0;
 
 	public static Image img_box_background;
 	public static Image img_trash_background;
@@ -103,7 +104,7 @@ public class MainWindow {
 	private SignedImage storeImage = null;
 	private int turningAngle = 0;
 	private boolean cuttingMode = false;
-	private double cutting_x = 0.1, cutting_y = 0.1, cutting_width = 0.8, cutting_height = 0.8;
+	private double cutting_width = 0.866667, cutting_height = 0.6, cutting_x = (1 - cutting_width) / 2, cutting_y = (1 - cutting_height) / 2;
 	private double show_pos_x, show_pos_y, show_width, show_height;
 	private double show_press_x, show_press_y;
 	private int show_press_sector; // 0: Oben; 1: Unten; 2: Links; 3: Rechts; 4: Mitte
@@ -353,6 +354,12 @@ public class MainWindow {
 
 			cutting_y -= rel_dy;
 			cutting_height += rel_dy;
+			
+			// Verhältniss Korrektur
+			double[] relClip0 = checkFittingRect(cutting_x, cutting_y, cutting_width, cutting_height, currentImage.getImage().getWidth(), currentImage.getImage().getHeight(), true);
+			cutting_width = relClip0[0];
+			cutting_height = relClip0[1];
+			
 			canvasShowcase.draw();
 			break;
 		case 1:
@@ -362,6 +369,12 @@ public class MainWindow {
 				break;
 
 			cutting_height -= rel_dy;
+			
+			// Verhältniss Korrektur
+			double[] relClip1 = checkFittingRect(cutting_x, cutting_y, cutting_width, cutting_height, currentImage.getImage().getWidth(), currentImage.getImage().getHeight(), true);
+			cutting_width = relClip1[0];
+			cutting_height = relClip1[1];
+			
 			canvasShowcase.draw();
 			break;
 		case 2:
@@ -372,6 +385,12 @@ public class MainWindow {
 
 			cutting_x -= rel_dx;
 			cutting_width += rel_dx;
+			
+			// Verhältniss Korrektur
+			double[] relClip2 = checkFittingRect(cutting_x, cutting_y, cutting_width, cutting_height, currentImage.getImage().getWidth(), currentImage.getImage().getHeight(), false);
+			cutting_width = relClip2[0];
+			cutting_height = relClip2[1];
+			
 			canvasShowcase.draw();
 			break;
 		case 3:
@@ -380,10 +399,31 @@ public class MainWindow {
 			else if (cutting_width + cutting_x - rel_dx >= 1)
 				break;
 			cutting_width -= rel_dx;
+			
+			// Verhältniss Korrektur
+			double[] relClip3 = checkFittingRect(cutting_x, cutting_y, cutting_width, cutting_height, currentImage.getImage().getWidth(), currentImage.getImage().getHeight(), false);
+			cutting_width = relClip3[0];
+			cutting_height = relClip3[1];
+			
 			canvasShowcase.draw();
 			break;
 		default:
-			break; // Keine Aktion da Leerlauf oder Sektor ungültig
+			// In der Mitte angepackt
+			
+			cutting_x -= rel_dx;
+			cutting_y -= rel_dy;
+			
+			if (cutting_x < 0)
+				cutting_x = 0;
+			if (cutting_x + cutting_width > 1)
+				cutting_x = 1 - cutting_width;
+			if (cutting_y < 0)
+				cutting_y = 0;
+			if (cutting_y + cutting_height > 1)
+				cutting_y = 1 - cutting_height;
+			canvasShowcase.draw();
+			
+			break;
 		}
 
 	}
@@ -570,6 +610,11 @@ public class MainWindow {
 			public void handle(ActionEvent event) {
 				layout_root.setLeft(layout_cut);
 				cuttingMode = true;
+				cutting_x = 0.1;
+				cutting_y = 0.1;
+				double[] dims = checkFittingRect(cutting_x, cutting_y, 0.8, 0.8, currentImage.getImage().getWidth(), currentImage.getImage().getHeight(), false);
+				cutting_width = dims[0];
+				cutting_height = dims[1];
 			}
 		});
 
@@ -759,7 +804,7 @@ public class MainWindow {
 				return;
 
 			g.setFill(COLOR_BLEND);
-			drawBorder(g, COLOR_BLEND, 1000, show_pos_x, show_pos_y, show_width, show_height, cutting_x, cutting_y,
+			drawBorder(g, COLOR_BLEND, 2000, show_pos_x, show_pos_y, show_width, show_height, cutting_x, cutting_y,
 					cutting_width, cutting_height);
 			drawBorder(g, COLOR_CUTTING_FRAME, 4, show_pos_x, show_pos_y, show_width, show_height, cutting_x, cutting_y,
 					cutting_width, cutting_height);
@@ -957,6 +1002,81 @@ public class MainWindow {
 		pt.setLry(y + width * hf + heightDif);
 		return pt;
 	}
+
+	/**
+	 * Takes relative values for the size of a rectangle and wether the adjustment
+	 * process should leaveout the height. Plus the canvas' absolut dimensions are
+	 * needed.
+	 * 
+	 * @param rw              rel width
+	 * @param rh              rel height
+	 * @param aw              total screen width
+	 * @param ah              total screen height
+	 * @param adjustingHeight adjust width only
+	 * @return
+	 */
+	public static double[] checkFittingRect(double rx, double ry, double rw, double rh, double aw, double ah, boolean adjustingHeight) {
+
+		// r: relative
+		// a: absolut
+		// s: selected
+		// n: needed
+		double sx = aw * rx;
+		double sy = ah * ry;
+		double sw = aw * rw;
+		double sh = ah * rh;
+
+		double nw = 0;
+		double nh = 0;
+
+		if (adjustingHeight) {
+			// Höhe gesetzt, nur Breite verändern
+
+			if (aw > ah) {
+				// Breites Bild
+				nw = (1 / FOTO_HEIGH_TO_WIDTH) * sh;
+				nh = sh;
+				if (nw + sx > aw) { // Benötigte Breite größer als Bild
+					nw = aw - sx;
+					nh = FOTO_HEIGH_TO_WIDTH * nw;
+				}
+			} else {
+				// Hochkant
+				nw = FOTO_HEIGH_TO_WIDTH * sh;
+				nh = sh;
+
+				if (nw + sx > aw) { // Überbreite
+					nw = aw - sx;
+					nh = (1 / FOTO_HEIGH_TO_WIDTH) * nw;
+				}
+			}
+		} else {
+			// Breite gesetzt, nur Höhe verändern
+
+			if (aw > ah) {
+				// Breites Bild
+				nw = sw;
+				nh = sw * FOTO_HEIGH_TO_WIDTH;
+				if (nh + sy > ah) { // Überhöhe
+					nh = ah - sy;
+					nw = nh * (1 / FOTO_HEIGH_TO_WIDTH);
+				}
+
+			} else {
+				// Hochkant
+
+				nw = sw;
+				nh = (1 / FOTO_HEIGH_TO_WIDTH) * sw;
+				if (nh + sy > ah) { // Benötigte Höhe größer als Bild
+					nh = ah - sy;
+					nw = nh * FOTO_HEIGH_TO_WIDTH;
+				}
+			}
+		}
+		
+		return new double[] {nw / aw, nh / ah };
+	}
+
 
 	public static ImageView getImageView(Image img, int width, int height) {
 		ImageView r = new ImageView(img);
