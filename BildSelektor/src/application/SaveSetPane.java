@@ -67,7 +67,7 @@ public class SaveSetPane {
 		layoutLowest.getChildren().add(buttonGrid);
 		layout_root.setCenter(layoutLowest);
 
-		boolean worksetsAvailable = (new File(Main.PATH + FileManager.REL_PATH_WORKINGSETS).listFiles().length > 0);
+		boolean worksetsAvailable = new File(Main.PATH + FileManager.REL_PATH_WORKINGSETS).listFiles() != null;
 		buttonOverride.setDisable(!worksetsAvailable);
 	}
 
