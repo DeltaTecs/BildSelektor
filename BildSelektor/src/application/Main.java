@@ -18,6 +18,7 @@ public class Main extends Application {
 	public static double loadProgress = 0;
 	public static double progressPerImage = 0;
 	public static Main currentInstance;
+	public static long imagesFailed = 0;
 	public static List<File> startFiles = new ArrayList<File>();
 	private ProgressWindow progressWindow;
 	private BufferedWorkingSet workingSet = null;

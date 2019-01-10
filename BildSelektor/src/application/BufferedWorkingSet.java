@@ -80,6 +80,8 @@ public class BufferedWorkingSet {
 		ws.setInfo(WorkingSetInfo.gen(ws.getPreviews().get(0).getImage(), files.size(), files.size()));
 		ws.kickOffUpdateLoop();
 		files = null;
+		if (Main.imagesFailed > 0) 
+			System.err.println("[WARN] failed to load " + Main.imagesFailed + " files!!!");
 		return ws;
 	}
 
@@ -168,6 +170,8 @@ public class BufferedWorkingSet {
 
 			@Override
 			public void run() {
+				final double progressBefore = Main.loadProgress;
+				boolean substracted = false;
 				try {
 					Image img = FileManager.load(f);
 					System.out.println("[info] loaded into RAM:\t " + name);
@@ -178,12 +182,17 @@ public class BufferedWorkingSet {
 					ws.getPreviews().add(new SignedImage(name, genPreview(img))); // Vorschau laden
 					System.out.println("[info] preview gen.:\t " + name);
 					sg.substract();
+					substracted = true;
 					img = null;
 					System.gc();
 					ws.setImageInRAM(ws.getImagesInRAM() - 1);
 					Main.loadProgress += Main.progressPerImage * 0.2;
 
 				} catch (Exception e) {
+					Main.loadProgress = progressBefore + Main.progressPerImage;
+					if (!substracted)
+						sg.substract();
+					Main.imagesFailed++;
 					System.err.println("Error loading file " + f.getName());
 					e.printStackTrace();
 				}
