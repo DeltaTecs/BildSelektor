@@ -47,7 +47,6 @@ public class MainWindow {
 	private static final int MIN_CUT_SIZE = 70;
 	private static final double GRIP_HEIGHT = 30;
 	private static final double GRIP_LENGTH = 60;
-	private static final double FOTO_HEIGH_TO_WIDTH = 9.0 / 13.0;
 
 	public static Image img_box_background;
 	public static Image img_trash_background;
@@ -73,6 +72,7 @@ public class MainWindow {
 	public static Image icon;
 
 	public static String global_style = "";
+	public static double foto_height_to_width = 9.0 / 13.0;
 
 	private Stage stage;
 	private Scene scene;
@@ -1034,20 +1034,20 @@ public class MainWindow {
 
 			if (aw > ah) {
 				// Breites Bild
-				nw = (1 / FOTO_HEIGH_TO_WIDTH) * sh;
+				nw = (1 / foto_height_to_width) * sh;
 				nh = sh;
 				if (nw + sx > aw) { // Benötigte Breite größer als Bild
 					nw = aw - sx;
-					nh = FOTO_HEIGH_TO_WIDTH * nw;
+					nh = foto_height_to_width * nw;
 				}
 			} else {
 				// Hochkant
-				nw = FOTO_HEIGH_TO_WIDTH * sh;
+				nw = foto_height_to_width * sh;
 				nh = sh;
 
 				if (nw + sx > aw) { // Überbreite
 					nw = aw - sx;
-					nh = (1 / FOTO_HEIGH_TO_WIDTH) * nw;
+					nh = (1 / foto_height_to_width) * nw;
 				}
 			}
 		} else {
@@ -1056,20 +1056,20 @@ public class MainWindow {
 			if (aw > ah) {
 				// Breites Bild
 				nw = sw;
-				nh = sw * FOTO_HEIGH_TO_WIDTH;
+				nh = sw * foto_height_to_width;
 				if (nh + sy > ah) { // Überhöhe
 					nh = ah - sy;
-					nw = nh * (1 / FOTO_HEIGH_TO_WIDTH);
+					nw = nh * (1 / foto_height_to_width);
 				}
 
 			} else {
 				// Hochkant
 
 				nw = sw;
-				nh = (1 / FOTO_HEIGH_TO_WIDTH) * sw;
+				nh = (1 / foto_height_to_width) * sw;
 				if (nh + sy > ah) { // Benötigte Höhe größer als Bild
 					nh = ah - sy;
-					nw = nh * FOTO_HEIGH_TO_WIDTH;
+					nw = nh * foto_height_to_width;
 				}
 			}
 		}

@@ -10,8 +10,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -70,6 +72,24 @@ public class StartupWindow extends Stage {
 		layoutLowest.getChildren().add(buttonGrid);
 		layout_root.setCenter(layoutLowest);
 
+		HBox layoutScaling = new HBox();
+		Label labelScaling = new Label("Schnitt-Verhältniss: ");
+		TextField fieldScaling = new TextField("9/13");
+		fieldScaling.textProperty().addListener((a, b, c) -> {
+			try {
+				double d0 = Double.parseDouble(fieldScaling.getText().split("/")[0]);
+				double d1 = Double.parseDouble(fieldScaling.getText().split("/")[1]);
+				MainWindow.foto_height_to_width = d0 / d1;
+			} catch (Exception e) {
+				fieldScaling.setText("9/13");
+				MainWindow.foto_height_to_width = 9.0 / 13.0;
+			}
+		});
+		layoutScaling.getChildren().addAll(labelScaling, fieldScaling);
+		layoutScaling.setSpacing(10);
+		layoutScaling.setPadding(new Insets(5));
+		layout_root.setBottom(layoutScaling);
+		
 		boolean worksetsAvailable = new File(Main.PATH + FileManager.REL_PATH_WORKINGSETS).listFiles() != null;
 		buttonLoadExisting.setDisable(!worksetsAvailable);
 
